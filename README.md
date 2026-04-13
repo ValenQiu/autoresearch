@@ -49,11 +49,45 @@ Hi have a look at program.md and let's kick off a new experiment! let's do the s
 
 The `program.md` file is essentially a super lightweight "skill".
 
+## Task-driven automatic research
+
+If you want to run a user-specified research task automatically (without manually editing `train.py` each run), use `auto_research.py`.
+
+1. Create a task file (JSON). Start from:
+
+```bash
+cp research_task.example.json my_task.json
+```
+
+2. Edit `my_task.json` and define:
+   - `search.parameters`: hyperparameter candidates to try (e.g. `DEPTH`, `MATRIX_LR`)
+   - `search.method`: `grid` or `random`
+   - `search.max_runs`: optional cap to limit experiments
+   - `constraints.timeout_seconds`: timeout per run
+
+3. Launch automatic experiments:
+
+```bash
+uv run auto_research.py --task my_task.json
+```
+
+Useful flags:
+- `--dry-run`: only print planned candidates
+- `--max-runs N`: temporary cap (overrides task file)
+- `--apply-best`: write the best config back to `train.py` after all runs
+
+Outputs are stored in `research_runs/<task_name>/`:
+- `results.tsv`: one row per run (status, val_bpb, VRAM, config, log file)
+- `*.log`: full run logs
+- `summary.json`: best run summary
+
 ## Project structure
 
 ```
 prepare.py      — constants, data prep + runtime utilities (do not modify)
 train.py        — model, optimizer, training loop (agent modifies this)
+auto_research.py — task-driven automated experiment runner
+research_task.example.json — task file template for automated runs
 program.md      — agent instructions
 pyproject.toml  — dependencies
 ```

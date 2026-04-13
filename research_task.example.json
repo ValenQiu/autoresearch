@@ -1,0 +1,21 @@
+{
+  "task_name": "lr-depth-search",
+  "description": "自动探索学习率与深度组合，目标最小化 val_bpb",
+  "command": "uv run train.py",
+  "objective": {
+    "metric": "val_bpb",
+    "mode": "min"
+  },
+  "search": {
+    "method": "grid",
+    "max_runs": 6,
+    "parameters": {
+      "DEPTH": [6, 8, 10],
+      "MATRIX_LR": [0.03, 0.04],
+      "WEIGHT_DECAY": [0.1]
+    }
+  },
+  "constraints": {
+    "timeout_seconds": 900
+  }
+}
