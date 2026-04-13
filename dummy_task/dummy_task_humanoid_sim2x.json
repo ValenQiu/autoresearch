@@ -1,0 +1,173 @@
+{
+  "task_name": "humanoid-sim2sim-sim2real-unified-pipeline",
+  "version": "v0.3",
+  "goal": "构建统一的策略调度主干，使 sim2sim 和 sim2real 仅在后端接口不同，策略层逻辑完全一致。",
+  "references": {
+    "training_repo": "https://github.com/ValenQiu/whole_body_tracking",
+    "deployment_repo": "https://github.com/ValenQiu/motion_tracking_controller",
+    "inspiration_repo": "https://github.com/LeCAR-Lab/ASAP",
+    "recovery_repo": "https://github.com/InternRobotics/HoST"
+  },
+  "project_context": {
+    "branches": {
+      "whole_body_tracking": "autoresearch",
+      "motion_tracking_controller": "autoresearch"
+    },
+    "robot": {
+      "model": "G1",
+      "dof": 29,
+      "config_source": "keep consistent with whole_body_tracking configs"
+    },
+    "base_policy_model_format": "onnx",
+    "input_implementation_priority": ["keyboard", "xbox", "unitree_remote"],
+    "runtime_input_selection": {
+      "required": true,
+      "field_name": "input_source",
+      "allowed_values": ["keyboard", "xbox", "unitree_remote"],
+      "single_source_only": true,
+      "note": "startup should specify exactly one input source, similar to sim2real network/interface configuration"
+    },
+    "sim2real_comms": "keep consistent with BeyondMimic mainline deployment"
+  },
+  "local_repos": {
+    "whole_body_tracking_train": {
+      "path": "/home/valenqiu/IsaacLab/source/whole_body_tracking",
+      "env_bootstrap": "/home/valenqiu/IsaacLab/docker/docker_run.sh"
+    },
+    "motion_tracking_controller_deploy": {
+      "path": "/home/valenqiu/source/motion_tracking_controller",
+      "env_bootstrap": "/home/valenqiu/source/motion_tracking_controller/docker_run.sh"
+    },
+    "asap_train": {
+      "path": "/home/valenqiu/source/ASAP",
+      "conda_env": "hvgym"
+    },
+    "asap_deploy": {
+      "path": "/home/valenqiu/source/ASAP/sim2real",
+      "conda_env": "robo_deploy"
+    }
+  },
+  "state_machine": {
+    "states": ["PASSIVE", "BASE_ACTIVE", "TASK_ACTIVE", "E_STOP"],
+    "events": [
+      "ACTIVATE_BASE",
+      "ACTIVATE_TASK",
+      "SWITCH_TO_BASE",
+      "E_STOP",
+      "RESET_TO_PASSIVE"
+    ],
+    "guards": [
+      "observer_healthy",
+      "comms_healthy",
+      "joint_limits_ok",
+      "base_stable",
+      "target_posture_reached"
+    ]
+  },
+  "policy_roles": {
+    "base_policy_mode": "recovery_to_target_posture",
+    "target_posture": "standing",
+    "task_policy_mode": "motion_tracking",
+    "switch_rules": {
+      "to_task_requires": [
+        "base_policy_ready",
+        "target_posture_reached",
+        "safety_checks_passed"
+      ],
+      "task_failure_fallback": "BASE_ACTIVE",
+      "critical_failure_fallback": "E_STOP"
+    }
+  },
+  "backend_abstraction": {
+    "interface": [
+      "read_observation",
+      "write_action",
+      "get_robot_status",
+      "set_control_mode"
+    ],
+    "implementations": ["MujocoBackend", "UnitreeBackend"]
+  },
+  "input_abstraction": {
+    "sources": ["keyboard", "xbox", "unitree_remote"],
+    "runtime_mode": "single_source_only",
+    "normalized_events": [
+      "ACTIVATE_BASE",
+      "ACTIVATE_TASK",
+      "SWITCH_TO_BASE",
+      "E_STOP",
+      "RESET_TO_PASSIVE"
+    ]
+  },
+  "milestones": [
+    {
+      "id": "M1",
+      "name": "Stand-switch pipeline bring-up (sim-first)",
+      "status": "in_verification",
+      "progress_summary": [
+        "default runtime entry is ros2 launch + profile_json",
+        "startup anti-fall baseline locked: m1_standby + spawn_inactive_controllers=false",
+        "max_ticks supports none=infinite, positive values are test-only",
+        "TASK->BASE decel window retained and hardened with speed gate and near-fall estop",
+        "trace-based diagnostic pipeline added (state/transition/joint/blend/policy summaries)",
+        "trace_diag selftest now reproduces PASSIVE->BASE->TASK->BASE with JSONL evidence"
+      ],
+      "acceptance": [
+        "PASSIVE startup is deterministic",
+        "Recovery base policy reaches standing target posture and holds",
+        "TASK activation is gated by target_posture_reached",
+        "BASE<->TASK switching and E_STOP verified with keyboard input"
+      ]
+    },
+    {
+      "id": "M2",
+      "name": "Safety supervisor and fallback",
+      "acceptance": [
+        "Policy runtime error triggers fallback to BASE_ACTIVE",
+        "Critical faults trigger E_STOP"
+      ]
+    },
+    {
+      "id": "M3",
+      "name": "Real backend integration",
+      "acceptance": [
+        "Unitree backend can run PASSIVE and BASE_ACTIVE safely",
+        "TASK_ACTIVE handover passes smoke tests"
+      ]
+    },
+    {
+      "id": "M4",
+      "name": "Multi-input controls",
+      "acceptance": [
+        "Keyboard/Xbox/Unitree remote map to same event schema",
+        "Command parity tests pass"
+      ]
+    }
+  ],
+  "progress_sync": {
+    "last_update": "2026-04-14",
+    "owner": "agent+user",
+    "highlights": [
+      "M1 core workflow implemented and launch-first path stabilized",
+      "startup stability regression loop closed with enforced safe defaults",
+      "TASK->BASE anti-fall behavior moved into focused verification stage",
+      "diagnostics upgraded: runtime trace recorder + trace_diag acceptance script",
+      "current blocker shifted from switch failure to post-switch late stability and pose-target mismatch"
+    ]
+  },
+  "test_plan": {
+    "state_transition_tests": true,
+    "safety_fault_injection_tests": true,
+    "sim2sim_parity_tests": true,
+    "sim2real_smoke_tests": true,
+    "input_parity_tests": true,
+    "m1_stand_switch_acceptance": true
+  },
+  "deliverables": [
+    "unified_runtime_architecture_doc",
+    "state_machine_and_safety_design",
+    "backend_adapter_layer",
+    "base_and_task_policy_switcher",
+    "input_adapter_layer",
+    "test_and_runbook_docs"
+  ]
+}
