@@ -1,0 +1,114 @@
+{
+  "task_name": "Best Sim2Sim & Sim2Real Controller",
+  "task_slug": "best_s2s_s2r",
+  "version": "v2.0",
+  "created": "2026-04-14",
+  "status": "active",
+
+  "goal": "构建 SOTA 级别的通用 sim2sim & sim2real 人形机器人运控部署工具",
+
+  "project_context": {
+    "robot": "Unitree G1 29DoF",
+    "framework": "独立新项目 (universal_humanoid_controller)",
+    "architecture": "Python + onnxruntime + Unitree SDK2 DDS",
+    "environments": ["conda (开发/真机)", "Docker (隔离/CI)"],
+    "code_sources": {
+      "asap_sim2real": {
+        "path": "/home/qiulm/sources/ASAP/sim2real",
+        "usage": "复制核心模块并重构，不直接依赖"
+      },
+      "motion_tracking_controller": {
+        "path": "/home/qiulm/sources/motion_tracking_controller",
+        "usage": "仅参考 BeyondMimic 观测拼接逻辑，不复用框架"
+      }
+    },
+    "model_sources": ["本地 ONNX 文件", "WandB run path 自动下载"]
+  },
+
+  "state_machine": {
+    "states": ["PASSIVE", "BASE_ACTIVE", "TASK_ACTIVE", "E_STOP"],
+    "transitions": [
+      {"from": "PASSIVE", "to": "BASE_ACTIVE", "trigger": "[i] init interpolation"},
+      {"from": "BASE_ACTIVE", "to": "TASK_ACTIVE", "trigger": "[]] activate task", "guard": "base_stable"},
+      {"from": "TASK_ACTIVE", "to": "BASE_ACTIVE", "trigger": "[[] switch back / auto-return / fault"},
+      {"from": "*", "to": "E_STOP", "trigger": "[o] emergency stop"},
+      {"from": "E_STOP", "to": "PASSIVE", "trigger": "[i] manual reset"}
+    ]
+  },
+
+  "milestones": [
+    {
+      "id": "M0",
+      "name": "项目基建与环境配置",
+      "scope": "基础设施",
+      "acceptance": [
+        "独立项目仓库 + 标准目录结构",
+        "conda environment.yml + install.sh 一键安装",
+        "Dockerfile + docker_run.sh 一键启动",
+        "基础包结构可 import",
+        "配置加载框架可用"
+      ]
+    },
+    {
+      "id": "M1",
+      "name": "核心框架 + ASAP Locomotion 基线",
+      "scope": "sim2sim (MuJoCo)",
+      "acceptance": [
+        "ASAP loco 控制机器人站立/行走",
+        "单终端启动 sim2sim",
+        "键盘控制 (i/]/o)",
+        "模型支持本地路径和 WandB",
+        "自动化测试 PASS"
+      ]
+    },
+    {
+      "id": "M2",
+      "name": "BeyondMimic 适配 + 策略切换",
+      "scope": "sim2sim 多策略",
+      "acceptance": [
+        "BeyondMimic 执行动作",
+        "TASK→BASE 切换保持平衡",
+        "切换 10 次不摔倒",
+        "SafetyGuard 自动 E_STOP"
+      ]
+    },
+    {
+      "id": "M3",
+      "name": "Sim2Real + 安全 + 多输入",
+      "scope": "真机部署",
+      "acceptance": [
+        "G1 真机全流程",
+        "通信中断自动 E_STOP",
+        "Xbox 手柄支持"
+      ]
+    },
+    {
+      "id": "M4",
+      "name": "多策略 + HoST + 生产化",
+      "scope": "策略生态 + 工具打磨",
+      "acceptance": [
+        "运行时多 task 策略切换",
+        "HoST recovery 集成",
+        "一键启动 + 文档 + 测试套件"
+      ]
+    }
+  ],
+
+  "key_decisions": [
+    {
+      "decision": "推倒重来，独立新项目",
+      "rationale": "不与 ASAP/BeyondMimic 仓库耦合；从 ASAP 复制核心代码并重构",
+      "date": "2026-04-14"
+    },
+    {
+      "decision": "不复用 motion_tracking_controller Docker",
+      "rationale": "围绕 ros2_control 构建，Python 方案不需要；重新写轻量 Dockerfile",
+      "date": "2026-04-14"
+    },
+    {
+      "decision": "conda + Docker 双轨环境",
+      "rationale": "conda 用于开发/真机；Docker 用于隔离/CI/跨机器协作",
+      "date": "2026-04-14"
+    }
+  ]
+}
