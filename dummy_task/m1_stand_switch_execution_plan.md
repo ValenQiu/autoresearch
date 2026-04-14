@@ -26,14 +26,14 @@ This milestone is sim2sim-first (keyboard input only).
 ## Codebase Roots
 
 - Training:
-  - `/home/valenqiu/IsaacLab/source/whole_body_tracking`
-  - Docker bootstrap: `/home/valenqiu/IsaacLab/docker/docker_run.sh`
+  - `/home/qiulm/sources/whole_body_tracking`
+  - Docker bootstrap: `/home/qiulm/sources/whole_body_tracking/docker/docker_run.sh`
 - Deployment:
-  - `/home/valenqiu/source/motion_tracking_controller`
-  - Docker bootstrap: `/home/valenqiu/source/motion_tracking_controller/docker_run.sh`
+  - `/home/qiulm/sources/motion_tracking_controller`
+  - Docker bootstrap: `/home/qiulm/sources/motion_tracking_controller/docker_run.sh`
 - ASAP references:
-  - `/home/valenqiu/source/ASAP`
-  - `/home/valenqiu/source/ASAP/sim2real`
+  - `/home/qiulm/sources/ASAP`
+  - `/home/qiulm/sources/ASAP/sim2real`
 
 ## Implementation Checklist (ordered)
 

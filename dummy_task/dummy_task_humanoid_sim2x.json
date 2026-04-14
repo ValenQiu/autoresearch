@@ -31,19 +31,19 @@
   },
   "local_repos": {
     "whole_body_tracking_train": {
-      "path": "/home/valenqiu/IsaacLab/source/whole_body_tracking",
-      "env_bootstrap": "/home/valenqiu/IsaacLab/docker/docker_run.sh"
+      "path": "/home/qiulm/sources/whole_body_tracking",
+      "env_bootstrap": "/home/qiulm/sources/whole_body_tracking/docker/docker_run.sh"
     },
     "motion_tracking_controller_deploy": {
-      "path": "/home/valenqiu/source/motion_tracking_controller",
-      "env_bootstrap": "/home/valenqiu/source/motion_tracking_controller/docker_run.sh"
+      "path": "/home/qiulm/sources/motion_tracking_controller",
+      "env_bootstrap": "/home/qiulm/sources/motion_tracking_controller/docker_run.sh"
     },
     "asap_train": {
-      "path": "/home/valenqiu/source/ASAP",
+      "path": "/home/qiulm/sources/ASAP",
       "conda_env": "hvgym"
     },
     "asap_deploy": {
-      "path": "/home/valenqiu/source/ASAP/sim2real",
+      "path": "/home/qiulm/sources/ASAP/sim2real",
       "conda_env": "robo_deploy"
     }
   },

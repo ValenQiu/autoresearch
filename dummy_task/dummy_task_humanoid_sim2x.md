@@ -37,16 +37,16 @@ The only difference between sim and real should be backend I/O adapters, not pol
 ## 2.2) Local Paths and Environments (confirmed)
 
 - BeyondMimic training:
-  - path: `/home/valenqiu/IsaacLab/source/whole_body_tracking`
-  - env bootstrap: `/home/valenqiu/IsaacLab/docker/docker_run.sh`
+  - path: `/home/qiulm/sources/whole_body_tracking`
+  - env bootstrap: `/home/qiulm/sources/whole_body_tracking/docker/docker_run.sh`
 - BeyondMimic deployment:
-  - path: `/home/valenqiu/source/motion_tracking_controller`
-  - env bootstrap: `/home/valenqiu/source/motion_tracking_controller/docker_run.sh`
+  - path: `/home/qiulm/sources/motion_tracking_controller`
+  - env bootstrap: `/home/qiulm/sources/motion_tracking_controller/docker_run.sh`
 - ASAP training:
-  - path: `/home/valenqiu/source/ASAP`
+  - path: `/home/qiulm/sources/ASAP`
   - conda env: `hvgym`
 - ASAP deployment:
-  - path: `/home/valenqiu/source/ASAP/sim2real`
+  - path: `/home/qiulm/sources/ASAP/sim2real`
   - conda env: `robo_deploy`
 
 ## 3) Functional Requirements
