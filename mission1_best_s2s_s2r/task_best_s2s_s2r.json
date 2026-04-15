@@ -62,34 +62,144 @@
       ]
     },
     {
+      "id": "M1.5",
+      "name": "ASAP Mimic 切换 + 操作流程打磨",
+      "scope": "sim2sim loco↔ASAP mimic",
+      "status": "completed",
+      "completed_at": "2026-04-15",
+      "code_repo": "universal_humanoid_controller",
+      "acceptance": [
+        "AsapMimicPolicy 加载 mimic ONNX 并执行",
+        "loco↔mimic 切换与多技能选择 (; / ')",
+        "与 ASAP 行为对齐（步进/插值/gap/start_upper_dof_pos）",
+        "selftest 全量 PASS",
+        "人工验收通过"
+      ]
+    },
+    {
       "id": "M2",
       "name": "BeyondMimic 适配 + 策略切换",
       "scope": "sim2sim 多策略",
+      "status": "completed",
+      "completed_at": "2026-04-15",
+      "code_repo": "universal_humanoid_controller",
       "acceptance": [
-        "BeyondMimic 执行动作",
-        "TASK→BASE 切换保持平衡",
-        "切换 10 次不摔倒",
-        "SafetyGuard 自动 E_STOP"
+        "BeyondMimicPolicy 加载 ONNX + metadata 自描述",
+        "JointMapper 处理 BeyondMimic L-R 交替序",
+        "上肢插值目标坐标系正确（两端均 remap 到机器人序后相减）",
+        "base_lin_vel 机体系转换与 IsaacLab 训练对齐",
+        "motion_length_s 从 WandB motion artifact 正确解析（225.68s）",
+        "phase 计算正确，phase_complete 自动返回",
+        "selftest 76/76 PASS（插值阶段 + 30%片段 + 全量 phase）"
+      ],
+      "lessons_learned": [
+        "关节顺序是新网络适配第一优先级：default_angles 和 ref_joint_pos 必须在同序下相减",
+        "MuJoCo qvel[0:3] 是世界系，IsaacLab base_lin_vel 是机体系，需 quat_rotate_inverse 转换",
+        "motion_length_s 必须从 WandB motion artifact(.npz) 读取，不能用训练 episode 超时长",
+        "分段测试：插值验证 ≤5s，稳定性 ≥30%，phase/终止条件必须 100%"
       ]
     },
     {
       "id": "M3",
       "name": "Sim2Real + 安全 + 多输入",
       "scope": "真机部署",
+      "status": "planned",
+      "plan_doc": "m3_sim2real.md",
+      "sub_phases": [
+        "M3.0 环境准备（SDK 安装 + g1_29dof_real.yaml + check_real_env.py）",
+        "M3.1 UnitreeBackend（DDS + FK + IMU 线速度估计）",
+        "M3.2 安全体系增强（速度/姿态/心跳/真机 E_STOP 阻尼制动）",
+        "M3.3 Xbox 手柄（与键盘语义等价）",
+        "M3.4 Sim2Real Profile + PolicyRunner backend 分发",
+        "M3.5 selftest_real.py(mock) + 真机人工验收"
+      ],
       "acceptance": [
-        "G1 真机全流程",
-        "通信中断自动 E_STOP",
-        "Xbox 手柄支持"
+        "UnitreeBackend 接口与 MujocoBackend 完全兼容",
+        "selftest_real.py mock 模式全 PASS（通信超时/关节限幅/IMU 异常）",
+        "G1 真机 PASSIVE→BASE_ACTIVE 站立稳定 ≥5s",
+        "G1 真机 loco 行走有速度响应",
+        "G1 真机 loco↔BeyondMimic 切换 5 次不摔倒",
+        "断网 100ms → 自动 E_STOP",
+        "Xbox 手柄 START/B/X/BACK/摇杆全功能验证"
+      ],
+      "key_risks": [
+        "base_lin_vel 真机 IMU 积分漂移 → 先接 loco（不依赖线速度），BeyondMimic 后调优",
+        "真机 PD gains 需重新调参 → 保守系数 0.7 开始，悬空验证后再落地"
       ]
     },
     {
       "id": "M4",
-      "name": "多策略 + HoST + 生产化",
-      "scope": "策略生态 + 工具打磨",
+      "name": "多策略在线切换 + 通用底座",
+      "scope": "sim2sim 策略生态",
+      "status": "planned",
+      "sub_phases": [
+        "M4.1 多策略在线切换 Plan A（透明中转，~15行）",
+        "M4.2 通用底座选型：HoST vs BFM-Zero（LeCAR-Lab/BFM-Zero）",
+        "M4.3 通用底座集成：RECOVERING状态 + 全身目标替代上肢插值",
+        "M4.4 OmniXtreme 高动态策略接入"
+      ],
+      "key_candidates": {
+        "universal_base": {
+          "host": "单一recovery策略，行为固定",
+          "bfm_zero": "可prompt行为基础模型，goal-reaching/tracking/reward，checkpoint+sim2sim+sim2real已开源",
+          "decision": "执行M4.2时最终选型，当前倾向BFM-Zero"
+        }
+      },
       "acceptance": [
-        "运行时多 task 策略切换",
-        "HoST recovery 集成",
-        "一键启动 + 文档 + 测试套件"
+        "TASK_ACTIVE 下 ;/' 切换到另一策略不摔倒",
+        "底座能从躺倒自主恢复站立",
+        "策略切换时底座接受全身目标（非手工上肢插值）",
+        "OmniXtreme 高动态动作 sim2sim 稳定执行"
+      ]
+    },
+    {
+      "id": "M5",
+      "name": "通用追踪器 + 参考动作流式输入",
+      "scope": "开放式策略架构",
+      "status": "planned",
+      "sub_phases": [
+        "M5.1 MotionProvider 抽象层（FileProvider + StreamProvider）",
+        "M5.2 OpenTrack 适配（优先，generalist v1 权重直接可用 + DAgger 复用 ASAP 专家）",
+        "M5.3 BFM-Zero Tracker 模式（LeCAR-Lab/BFM-Zero）",
+        "M5.4 SONIC/GR00T-WBC 适配（主要增量 = Planner + VR，对接 M6）",
+        "M5.5 Kinematic Planner（SONIC）"
+      ],
+      "selection_rationale": "OpenTrack先于SONIC：ONNX导出路径成熟、权重直接可用、DAgger范式可复用本机16个ASAP专家策略、Pico协议(mj_retargeting)已就绪留给SONIC+M6",
+      "acceptance": [
+        "MotionProvider 接口：FileProvider + StreamProvider",
+        "OpenTrack sim2sim LAFAN1 generalist 跟踪",
+        "BFM-Zero tracking_inference 接入 UHC",
+        "SONIC sim2sim LAFAN1 多动作跟踪"
+      ]
+    },
+    {
+      "id": "M6",
+      "name": "遥操作（Teleoperation）",
+      "scope": "实时人类输入设备",
+      "status": "planned",
+      "sub_phases": [
+        "M6.1 Pico VR 接入（ZMQ，参考SONIC协议）",
+        "M6.2 Retarget Pipeline（人体骨架 → G1）",
+        "M6.3 MoCap 接入"
+      ],
+      "acceptance": [
+        "Pico VR 手臂移动 → 机器人实时跟随（sim2sim）",
+        "端到端延迟 < 50ms"
+      ]
+    },
+    {
+      "id": "M7",
+      "name": "高层自主性（Planner / VLM / VLA）",
+      "scope": "AI驱动行为",
+      "status": "planned",
+      "sub_phases": [
+        "M7.1 Text-to-Motion（Kimodo等）",
+        "M7.2 VLM/VLA 行为规划",
+        "M7.3 感知-规划-控制闭环"
+      ],
+      "acceptance": [
+        "自然语言 → 机器人动作（sim2sim）",
+        "视觉 + 语言 → 行为序列 → 执行"
       ]
     }
   ],

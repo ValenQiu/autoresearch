@@ -8,10 +8,13 @@
 |----|------|------|------|
 | M0 | 项目基建与环境配置 | 基础设施 | **完成** |
 | M1 | 核心框架 + ASAP Locomotion 基线 | sim2sim | **完成** |
-| M1.5 | ASAP Mimic 切换 + 操作流程打磨 | sim2sim loco↔mimic | 待开始 |
-| M2 | BeyondMimic 适配 + 策略切换 | sim2sim 多策略 | 待开始 |
-| M3 | Sim2Real + 安全 + 多输入 | 真机 | 待开始 |
-| M4 | 多策略 + HoST + 生产化 | 策略生态 | 待开始 |
+| M1.5 | ASAP Mimic 切换 + 操作流程打磨 | sim2sim loco↔mimic | **完成** |
+| M2 | BeyondMimic 适配 + 策略切换 | sim2sim 多策略 | **完成** |
+| M3 | Sim2Real + 安全 + 多输入 | 真机 | 待开始（等真机） |
+| M4 | 多策略在线切换 + 通用底座（HoST/BFM-Zero） | sim2sim 策略生态 | **M4.4 进行中** |
+| M5 | 通用追踪器 + 参考动作流式输入（SONIC/OpenTrack/BFM-Zero） | 开放式策略 | 待开始 |
+| M6 | 遥操作（Pico VR / MoCap） | 实时人类输入 | 待开始 |
+| M7 | 高层自主性（Text2Motion / VLM / VLA） | AI 驱动 | 待开始 |
 
 ## **文件说明**
 
@@ -21,15 +24,17 @@
 | `task_best_s2s_s2r.json` | 结构化配置（机器可读） |
 | `m0_project_infra.md` | M0 执行计划（环境/基建） |
 | `m1_asap_loco_baseline.md` | M1 执行计划（核心框架 + ASAP loco）✅ |
-| `m1_5_asap_mimic_switch.md` | M1.5 执行计划（ASAP Mimic + 切换流程打磨） |
-| `m2_beyondmimic_switch.md` | M2 执行计划（BeyondMimic + 切换） |
+| `m1_5_asap_mimic_switch.md` | M1.5 执行计划（ASAP Mimic + 切换流程打磨）✅ |
+| `m1_5_verification_plan.md` | M1.5 与 ASAP 对齐验证记录（CR7 等问题） |
+| `m2_beyondmimic_switch.md` | M2 执行计划（BeyondMimic + 切换）✅ |
+| `m3_sim2real.md` | M3 执行计划（Sim2Real + 安全 + 多输入）🚧 |
 | `research/asap_sim2real_analysis.md` | ASAP 架构调研报告 |
 | `research/motion_tracking_controller_postmortem.md` | dummy_task 复盘报告 |
 
 ## 快速导航
 
 - **项目是什么？** → `task_best_s2s_s2r.md` §1-2
-- **现在该做什么？** → `m0_project_infra.md`
+- **现在该做什么？** → M4.4（OmniXtreme 高动态策略接入，调试中）；M3 等真机
 - **之前为什么失败？** → `research/motion_tracking_controller_postmortem.md`
 - **ASAP 代码怎么工作？** → `research/asap_sim2real_analysis.md`
 - **配置怎么简化？** → `task_best_s2s_s2r.md` §8

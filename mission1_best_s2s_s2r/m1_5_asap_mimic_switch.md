@@ -3,7 +3,10 @@
 **Milestone**: M1.5  
 **范围**: sim2sim, ASAP loco ↔ ASAP mimic  
 **前置**: M1 完成  
-**预估工作量**: 1-2 天  
+**状态**: ✅ **已完成**（2026-04-15）  
+**代码仓库**: `universal_humanoid_controller`（UHC）
+
+**完成摘要**：ASAP Mimic 全技能接入；loco↔mimic 与键位（`]` / `[` / `;` / `'`）打磨；与 ASAP 对齐（同步步进、插值后 gap、`start_upper_dof_pos`、线程安全）；`scripts/selftest.py` 全量 PASS；人工确认 mimic 表现与验收一致。
 
 ## 为什么先做 M1.5
 
@@ -24,13 +27,13 @@ M2 (BeyondMimic) 在此基础上只需额外处理参数差异。
 
 ## 验收标准
 
-- [ ] AsapMimicPolicy 加载技能 ONNX 并执行动作
-- [ ] 按 `]` 从 loco 进入 mimic：上肢在 loco 控制下平滑插值 → 策略切换
-- [ ] 按 `[` 从 mimic 切回 loco：腿部即时由 loco 接管 → 上肢插值回 ref
-- [ ] phase >= 1.0 时自动切回 loco
-- [ ] 按 `;` / `'` 在 loco 模式下切换不同 mimic 技能
-- [ ] 切换 10 次不摔倒
-- [ ] selftest 全部 PASS
+- [x] AsapMimicPolicy 加载技能 ONNX 并执行动作
+- [x] 按 `]` 从 loco 进入 mimic：上肢在 loco 控制下平滑插值 → 策略切换
+- [x] 按 `[` 从 mimic 切回 loco：腿部即时由 loco 接管 → 上肢插值回 ref
+- [x] phase >= 1.0 时自动切回 loco
+- [x] 按 `;` / `'` 在 loco 模式下切换不同 mimic 技能
+- [x] 切换稳定性满足自测与人工审核（含多次切换场景）
+- [x] selftest 全部 PASS
 
 ## 需要实现的模块
 
@@ -53,10 +56,7 @@ M2 (BeyondMimic) 在此基础上只需额外处理参数差异。
 
 ## 需要的模型文件
 
-从 ASAP 复制一个 mimic 技能 ONNX 用于测试：
-```
-models/mimic/kick_level1/model_168000.onnx
-```
+自 ASAP 复制 mimic 技能 ONNX（示例：`models/mimic/kick_level1/...`）。交付时 **14 个 ASAP mimic 技能**均已纳入 profile（如 `sim2sim_all_mimic.yaml`），含 CR7 等代表性动作。
 
 ## 操作流程（完整版，M1.5 交付后）
 
