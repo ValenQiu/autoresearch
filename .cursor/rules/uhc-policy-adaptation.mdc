@@ -1,0 +1,17 @@
+---
+description: 编辑本仓库任务文档或规范时，提醒新策略接入须先读 uhc-policy-adaptation skill（UHC 代码请在 universal_humanoid_controller 仓库中开发并遵循同 skill）。
+globs:
+  - "DEVELOPMENT_RULES.md"
+  - "AGENTS.md"
+  - "mission1_best_s2s_s2r/**/*.md"
+alwaysApply: false
+---
+
+# UHC 策略适配（规范交叉引用）
+
+若涉及 **UHC / 新 ONNX 策略** 的叙述或清单更新，须与 skill **uhc-policy-adaptation** 一致：
+
+- Skill：[.cursor/skills/uhc-policy-adaptation/SKILL.md](../../.cursor/skills/uhc-policy-adaptation/SKILL.md)
+- 根目录 [AGENTS.md](../../AGENTS.md)、[DEVELOPMENT_RULES.md](../../DEVELOPMENT_RULES.md) §「适配新网络时的对齐清单」
+
+实际 Policy 代码位于 **`universal_humanoid_controller`** 仓库；该仓库内亦应有同名 skill 与 Cursor rule，编辑 `uhc/`、`config/policies/` 时生效。

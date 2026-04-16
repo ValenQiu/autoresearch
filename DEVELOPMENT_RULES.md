@@ -103,6 +103,8 @@ if __name__ == "__main__":
 
 ## 适配新网络时的对齐清单（强制）
 
+**在编写或修改 Policy 代码、策略 YAML、仿真节拍与安全层之前，必须先阅读 skill `uhc-policy-adaptation`**：[`.cursor/skills/uhc-policy-adaptation/SKILL.md`](.cursor/skills/uhc-policy-adaptation/SKILL.md)。该 skill 覆盖框架默认行为（如 `SafetyGuard.clip_action`）与参考部署的差异，与下列条目互补；团队可见枚举见根目录 [`AGENTS.md`](AGENTS.md)。
+
 每次将**新 RL 策略/新 ONNX 模型**接入 UHC 框架时，必须在对应 Policy 类的 `init()` 和 `_build_obs()` 中逐项确认以下内容，并在 selftest 中用 headless 推理覆盖：
 
 ### 1. 关节顺序（最高优先级）

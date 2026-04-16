@@ -20,6 +20,7 @@
 
 | 文件 | 内容 |
 |------|------|
+| `AGENTS.md`（仓库根目录） | Agent 可见 skills 列表；**新策略接入 UHC 前先读 `uhc-policy-adaptation`** |
 | `task_best_s2s_s2r.md` | 任务全文 v2.0（目标/架构/需求/milestone/配置精简分析） |
 | `task_best_s2s_s2r.json` | 结构化配置（机器可读） |
 | `m0_project_infra.md` | M0 执行计划（环境/基建） |

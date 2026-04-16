@@ -14,7 +14,7 @@ queue/
 
 # Agent prompt files (generated per-session by launchers)
 CLAUDE.md
-AGENTS.md
+# 根目录 AGENTS.md 由团队维护（skills 列表），需入库；若本机有生成式覆盖请用 git update-index --skip-worktree 或本地忽略规则处理。
 
 # Experimental code/artifacts
 dev/
