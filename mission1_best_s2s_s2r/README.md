@@ -11,7 +11,7 @@
 | M1.5 | ASAP Mimic 切换 + 操作流程打磨 | sim2sim loco↔mimic | **完成** |
 | M2 | BeyondMimic 适配 + 策略切换 | sim2sim 多策略 | **完成** |
 | M3 | Sim2Real + 安全 + 多输入 | 真机 | 待开始（等真机） |
-| M4 | 多策略在线切换 + 通用底座（HoST/BFM-Zero） | sim2sim 策略生态 | **M4.4 OmniXtreme sim2sim 已验收**；M4.1–M4.3 按任务文档推进 |
+| M4 | 多策略在线切换 + 通用底座（HoST/BFM-Zero） | sim2sim 策略生态 | **进行中**：**M4.1**、**M4.4** 已完成；**M4.2**、**M4.3** 待开始 |
 | M5 | 通用追踪器 + 参考动作流式输入（SONIC/OpenTrack/BFM-Zero） | 开放式策略 | 待开始 |
 | M6 | 遥操作（Pico VR / MoCap） | 实时人类输入 | 待开始 |
 | M7 | 高层自主性（Text2Motion / VLM / VLA） | AI 驱动 | 待开始 |
@@ -29,6 +29,7 @@
 | `m1_5_verification_plan.md` | M1.5 与 ASAP 对齐验证记录（CR7 等问题） |
 | `superpowers_workflow.md` | Superpowers skills 与仓库规范（DEVELOPMENT_RULES / selftest）融合说明 |
 | `m2_beyondmimic_switch.md` | M2 执行计划（BeyondMimic + 切换）✅ |
+| `m4_multi_policy_switch.md` | M4.1 多策略透明中转（PolicyRunner 机制说明）✅ |
 | `m3_sim2real.md` | M3 执行计划（Sim2Real + 安全 + 多输入）🚧 |
 | `research/asap_sim2real_analysis.md` | ASAP 架构调研报告 |
 | `research/motion_tracking_controller_postmortem.md` | dummy_task 复盘报告 |
@@ -37,7 +38,7 @@
 ## 快速导航
 
 - **项目是什么？** → `task_best_s2s_s2r.md` §1-2
-- **现在该做什么？** → M4.1 多策略透明切换 / M4.2 通用底座选型；M3 等真机；新策略接入先读 `.cursor/skills/uhc-policy-adaptation/SKILL.md`
+- **现在该做什么？** → **M4.2** 通用底座选型（HoST vs BFM-Zero）→ **M4.3** 集成；可选补 M4.1「5 次切换」专项验收与 selftest；**M3** 等真机；新策略接入先读 `.cursor/skills/uhc-policy-adaptation/SKILL.md`
 - **之前为什么失败？** → `research/motion_tracking_controller_postmortem.md`
 - **ASAP 代码怎么工作？** → `research/asap_sim2real_analysis.md`
 - **配置怎么简化？** → `task_best_s2s_s2r.md` §8

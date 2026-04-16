@@ -310,12 +310,22 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 
 **目标**：将 UHC 从"单次切换"升级为"多策略在线切换"，并引入通用底座替代固定站立姿态，实现任意姿态自主恢复与全身目标插值。
 
+**M4 总进度（2026-04）**：
+
+| 子阶段 | 状态 | 说明 |
+|--------|------|------|
+| **M4.1** 多策略透明中转 | ✅ **已完成** | `PolicyRunner`：`;`/`'` + `_pending_task_switch_idx`，详见 `m4_multi_policy_switch.md` |
+| **M4.2** 通用底座选型 | 🚧 待开始 | HoST vs BFM-Zero 调研报告 |
+| **M4.3** 通用底座集成 | 🚧 待开始 | `RECOVERING`、`universal_base.py` |
+| **M4.4** OmniXtreme | ✅ **已完成** | sim2sim 验收、`skip_position_clip`、复盘与 skill |
+
 **子阶段**：
 
-**M4.1：多策略在线切换（Plan A 透明中转）**
+**M4.1：多策略在线切换（Plan A 透明中转）** ✅ **已完成（代码）**
+
 - `; / '` 在 TASK_ACTIVE 状态下触发 TASK→loco(加速)→TASK' 的透明中转
-- PolicyRunner 新增 `_pending_task_idx` 机制（约 15 行改动）
-- 验收：sim2sim 中 BeyondMimic→CR7→BeyondMimic 连续切换 5 次不摔倒
+- PolicyRunner：`_pending_task_switch_idx` 排队机制（与 loco 退出插值衔接）
+- 验收（产品级）：sim2sim 中 BeyondMimic→CR7→BeyondMimic 连续切换 5 次不摔倒 — **建议用多 task profile 做一次专项回归**；机制已在 `PolicyRunner` 中实现
 - 详见：`m4_multi_policy_switch.md`
 
 **M4.2：通用底座策略调研与选型（HoST vs BFM-Zero）**
@@ -375,14 +385,14 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 4. **FM 策略的 `initial_noise` 是必需的**：不是可选的探索噪声，而是 flow matching 去噪链的输入起点
 5. **框架默认 `clip_action` 可能破坏策略**：参考 `deploy_mujoco.py` 不对关节目标做 URDF 位置裁剪；UHC 若裁剪，高动态段会在数百步内失稳。策略若已有包络/力矩路径，应 `skip_position_clip: true`。
 
-**交付物（M4.4 相关）**：
-- [x] `uhc/policies/omnixrtreme.py` 及 `config/policies/omnixrtreme.yaml`
-- [x] `scripts/debug_omnixrtreme_audit.py`（数值对比 / 回归辅助）
-- [ ] PolicyRunner 多策略在线切换（M4.1，~15 行）
-- [ ] M4.2 选型报告（调研文档）
-- [ ] `uhc/policies/universal_base.py`（HoST 或 BFM-Zero 适配）
-- [ ] `uhc/core/state_machine.py`：新增 RECOVERING 状态
-- [ ] 自动化测试更新（多策略切换 + recovery 流程）
+**交付物（M4 汇总）**：
+- [x] **M4.1** PolicyRunner 多策略在线切换（`_pending_task_switch_idx` + `;`/`'`，见 `m4_multi_policy_switch.md`）
+- [ ] **M4.2** 选型报告（调研文档：HoST vs BFM-Zero）
+- [ ] **M4.3** `uhc/policies/universal_base.py`（HoST 或 BFM-Zero 适配）
+- [ ] **M4.3** `uhc/core/state_machine.py`：新增 RECOVERING 状态
+- [x] **M4.4** `uhc/policies/omnixrtreme.py` 及 `config/policies/omnixrtreme.yaml`
+- [x] **M4.4** `scripts/debug_omnixrtreme_audit.py`（数值对比 / 回归辅助）
+- [ ] 自动化测试更新（多策略切换专项 + M4.3 recovery 流程）
 
 ---
 

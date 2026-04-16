@@ -131,13 +131,30 @@
       "id": "M4",
       "name": "多策略在线切换 + 通用底座",
       "scope": "sim2sim 策略生态",
-      "status": "planned",
+      "status": "in_progress",
+      "status_note": "M4.1 与 M4.4 已完成；M4.2、M4.3 待开始",
+      "code_repo": "universal_humanoid_controller",
       "sub_phases": [
         "M4.1 多策略在线切换 Plan A（透明中转，~15行）",
         "M4.2 通用底座选型：HoST vs BFM-Zero（LeCAR-Lab/BFM-Zero）",
         "M4.3 通用底座集成：RECOVERING状态 + 全身目标替代上肢插值",
         "M4.4 OmniXtreme 高动态策略接入"
       ],
+      "sub_phase_status": {
+        "M4.1": {
+          "status": "completed",
+          "completed_at": "2026-04",
+          "plan_doc": "m4_multi_policy_switch.md",
+          "implementation": "PolicyRunner._pending_task_switch_idx; keys ;/' in TASK_ACTIVE"
+        },
+        "M4.2": { "status": "pending" },
+        "M4.3": { "status": "pending" },
+        "M4.4": {
+          "status": "completed",
+          "completed_at": "2026-04-16",
+          "research": "research/omnixrtreme_uhc_adaptation.md"
+        }
+      },
       "key_candidates": {
         "universal_base": {
           "host": "单一recovery策略，行为固定",
@@ -150,6 +167,11 @@
         "底座能从躺倒自主恢复站立",
         "策略切换时底座接受全身目标（非手工上肢插值）",
         "OmniXtreme 高动态动作 sim2sim 稳定执行"
+      ],
+      "acceptance_progress": [
+        "M4.1 机制：代码已完成；5次连续切换专项回归建议用多 task profile 执行",
+        "M4.4：sim2sim 已验收（含 skip_position_clip）",
+        "M4.2/M4.3：未满足，待通用底座"
       ]
     },
     {
