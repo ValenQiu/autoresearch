@@ -132,11 +132,11 @@
       "name": "多策略在线切换 + 通用底座",
       "scope": "sim2sim 策略生态",
       "status": "in_progress",
-      "status_note": "M4.1 与 M4.4 已完成；M4.2、M4.3 待开始",
+      "status_note": "M4.1、M4.2、M4.4 已完成；M4.3 待开始",
       "code_repo": "universal_humanoid_controller",
       "sub_phases": [
         "M4.1 多策略在线切换 Plan A（透明中转，~15行）",
-        "M4.2 通用底座选型：HoST vs BFM-Zero（LeCAR-Lab/BFM-Zero）",
+        "M4.2 通用底座选型：BFM-Zero 选定 + BFMZeroPolicy 实现",
         "M4.3 通用底座集成：RECOVERING状态 + 全身目标替代上肢插值",
         "M4.4 OmniXtreme 高动态策略接入"
       ],
@@ -147,7 +147,19 @@
           "plan_doc": "m4_multi_policy_switch.md",
           "implementation": "PolicyRunner._pending_task_switch_idx; keys ;/' in TASK_ACTIVE"
         },
-        "M4.2": { "status": "pending" },
+        "M4.2": {
+          "status": "completed",
+          "date": "2026-04-16",
+          "decision": "BFM-Zero (LeCAR-Lab, ICLR 2026)",
+          "deliverables": [
+            "uhc/policies/bfm_zero.py",
+            "config/policies/bfm_zero.yaml",
+            "config/profiles/sim2sim_bfm_zero.yaml",
+            "scripts/verify_bfm_zero.py",
+            "PolicyRunner._create_base_policy() dynamic loading"
+          ],
+          "report": "research/m4_2_bfm_zero_vs_host.md"
+        },
         "M4.3": { "status": "pending" },
         "M4.4": {
           "status": "completed",
@@ -159,7 +171,7 @@
         "universal_base": {
           "host": "单一recovery策略，行为固定",
           "bfm_zero": "可prompt行为基础模型，goal-reaching/tracking/reward，checkpoint+sim2sim+sim2real已开源",
-          "decision": "执行M4.2时最终选型，当前倾向BFM-Zero"
+          "decision": "已选定 BFM-Zero (2026-04-16)"
         }
       },
       "acceptance": [
@@ -171,7 +183,10 @@
       "acceptance_progress": [
         "M4.1 机制：代码已完成；5次连续切换专项回归建议用多 task profile 执行",
         "M4.4：sim2sim 已验收（含 skip_position_clip）",
-        "M4.2/M4.3：未满足，待通用底座"
+        "M4.2：已完成（BFM-Zero 选型 + headless 验证）；M4.3：待开始（GUI sim2sim + RECOVERING 状态机）",
+        "M4.2 集成修复：base↔task 插值起点统一为切换当帧实际关节角，修复腰部跳变与前倾回归",
+        "M4.2 体验对齐：BeyondMimic/OmniXtreme 的 loco_to_task_duration_s 从 2.5s 统一为 1.5s（与 ASAP 一致）",
+        "M4.2 经验沉淀：插值异常排错流程已形成可复用 skill（uhc-interpolation-debugging）"
       ]
     },
     {

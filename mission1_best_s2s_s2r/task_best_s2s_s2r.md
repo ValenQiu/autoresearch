@@ -315,9 +315,15 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 | 子阶段 | 状态 | 说明 |
 |--------|------|------|
 | **M4.1** 多策略透明中转 | ✅ **已完成** | `PolicyRunner`：`;`/`'` + `_pending_task_switch_idx`，详见 `m4_multi_policy_switch.md` |
-| **M4.2** 通用底座选型 | 🚧 待开始 | HoST vs BFM-Zero 调研报告 |
+| **M4.2** 通用底座选型 | ✅ **已完成** | BFM-Zero 选定 + `BFMZeroPolicy` 实现 + headless 验证通过，详见 `research/m4_2_bfm_zero_vs_host.md` |
 | **M4.3** 通用底座集成 | 🚧 待开始 | `RECOVERING`、`universal_base.py` |
 | **M4.4** OmniXtreme | ✅ **已完成** | sim2sim 验收、`skip_position_clip`、复盘与 skill |
+
+**M4.2 集成进展更新（2026-04-16）**：
+- [x] 修复 base↔task 上肢插值起点错误导致的腰部异常跳变（起点改为切换当帧实际关节角）
+- [x] 修复“命令值起插值”引入的全动作腰部前倾回归（enter/exit 均改为实际姿态起插值）
+- [x] 对齐切换时长：BeyondMimic / OmniXtreme 的 `loco_to_task_duration_s` 统一到 `1.5s`
+- [x] 排错流程沉淀：新增 skill `uhc-interpolation-debugging`
 
 **子阶段**：
 
@@ -328,30 +334,34 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 - 验收（产品级）：sim2sim 中 BeyondMimic→CR7→BeyondMimic 连续切换 5 次不摔倒 — **建议用多 task profile 做一次专项回归**；机制已在 `PolicyRunner` 中实现
 - 详见：`m4_multi_policy_switch.md`
 
-**M4.2：通用底座策略调研与选型（HoST vs BFM-Zero）**
+**M4.2：通用底座策略调研与选型（HoST vs BFM-Zero）** ✅ **已完成（2026-04-16）**
 
-> 当前 base_policy（ASAP Loco）只能维持站立，策略切换时的姿态插值也仅限上肢。  
-> 升级目标：底座能从**任意初始姿态**（包括跌倒）自主恢复到站立，并能接受**全身目标姿态**作为 prompt，实现比上肢插值更优雅的策略切换过渡。
+> **选型结论：BFM-Zero**（LeCAR-Lab，ICLR 2026）
 
-候选方案对比（具体执行时选定一个）：
-
-| 维度 | **HoST** | **BFM-Zero** |
+| 维度 | **HoST** | **BFM-Zero** ✅ |
 |------|----------|-------------|
 | 类型 | 单一 recovery 策略 | 可 prompt 行为基础模型 |
+| DOF | 23-DOF（缺手腕） | **29-DOF（与 UHC 完全一致）** |
 | 能力 | 跌倒→站立（fixed behavior） | goal-reaching / tracking / reward，latent z prompt |
-| 开源状态 | 有论文，权重依托于具体实现 | ✅ checkpoint + sim2sim + sim2real deployment 均已开源 |
-| ONNX 导出 | 需要适配 | ✅ 原生支持（`humanoidverse.tracking_inference` 导出） |
-| Promptable | ❌ | ✅ 可用 goal_inference 预计算目标 z，替代上肢插值 |
-| 参考仓库 | — | [LeCAR-Lab/BFM-Zero](https://github.com/LeCAR-Lab/BFM-Zero) |
+| 开源状态 | 有论文，权重依托于具体实现 | ✅ checkpoint + ONNX + sim2sim + sim2real 均已开源 |
+| ONNX 导出 | 需手工适配 | ✅ 原生支持（opset 13，输入 721 维） |
+| Promptable | ❌ | ✅ latent z（256 维）驱动行为 |
+| MuJoCo XML 兼容 | 需要适配 | ✅ 与 UHC `scene_29dof.xml` 质量/ctrlrange 一致（Δ0.001kg） |
 
-> **当前倾向**：BFM-Zero 更符合长期目标（promptable + 全身控制），HoST 作为备选（若 BFM-Zero obs 对齐复杂度过高）。**具体执行 M4.2 时再做最终选型。**
+交付物：
+- `uhc/policies/bfm_zero.py`：`BFMZeroPolicy(BasePolicy)` 子类，完整 obs 组装 + 4 帧历史 + z 管理
+- `config/policies/bfm_zero.yaml`：PD gains / action_scale / z_sources 全部逐字复制自 deploy 参考
+- `config/profiles/sim2sim_bfm_zero.yaml`：BFM-Zero(base) + BeyondMimic(task) profile
+- `PolicyRunner._create_base_policy()`：动态 base_policy 加载，向后兼容 AsapLoco
+- `scripts/verify_bfm_zero.py`：6 项 headless 验证（obs 维度、目标 z、tracking z、动态加载）
+- 详见 `research/m4_2_bfm_zero_vs_host.md`
 
 **M4.3：通用底座集成**
-- 将选定底座策略（HoST 或 BFM-Zero）接入 UHC 作为 `base_policy`
-- 状态机新增 `RECOVERING` 状态：跌倒检测 → RECOVERING(自主站起) → BASE_ACTIVE
-- 策略切换时：目标策略的 `get_full_body_target()` → 底座接受全身目标 → 自主过渡（替代手工上肢插值）
-- 新增 `uhc/policies/universal_base.py`（统一包装 HoST / BFM-Zero）
-- 验收：机器人从躺倒 → 底座自主站起 → 进入 BeyondMimic → 结束后返回站立
+- 将 BFM-Zero 正式接入 UHC 作为 `base_policy`（M4.2 已实现基础 `BFMZeroPolicy` 类）
+- 状态机新增 `RECOVERING` 状态：跌倒检测 → RECOVERING(BFM-Zero goal z 引导站起) → BASE_ACTIVE
+- 策略切换时：目标策略的 `get_full_body_target()` → BFM-Zero 接受 goal z → 自主全身过渡（替代手工上肢插值）
+- MuJoCo GUI 端到端验收（M4.2 仅完成 headless 验证）
+- 验收：机器人从躺倒 → BFM-Zero 自主站起 → 进入 BeyondMimic → 结束后返回站立
 
 **M4.4：OmniXtreme / 高动态策略接入** ✅ sim2sim 已验收（2026-04-16）
 
