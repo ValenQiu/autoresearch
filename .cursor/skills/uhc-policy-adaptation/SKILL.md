@@ -61,6 +61,18 @@ description: Use when adding a new ONNX policy to universal_humanoid_controller,
 | 无 `clip` 关节目标、仅 `ctrl` 限幅 | 勿叠加 URDF `clip_action`，除非明确需要 |
 | 配置 `noise_scales` | 策略或观测 builder 可选对齐 |
 
+## 已适配策略的经验索引
+
+| 策略 | 关键经验 | 详情文档 |
+|------|----------|----------|
+| OmniXtreme | `skip_position_clip: true`（自有包络裁剪优先）；`safety_min_height: 0.0`；actuator friction per-substep | `research/omnixrtreme_uhc_adaptation.md` |
+| BFM-Zero | 29-DOF 与 UHC 完全对齐（identity mapper）；`action_rescale=5`；obs 4 帧历史 roll 顺序；latent z 通过 `set_z()` 注入；`skip_position_clip: false`（deploy 代码自己做 `np.clip`，与 SafetyGuard 一致） | `research/m4_2_bfm_zero_vs_host.md` |
+
 ## 维护说明
 
 新增策略类型时：**在策略 YAML 中显式写出** `skip_position_clip`、`safety_min_height`、以及任何与框架默认冲突的项；并在 `research/` 或 PR 说明中记录一条「与参考差异表」，便于下次模型迭代。
+
+**base_policy 扩展**：使用 `PolicyRunner._create_base_policy()` 根据 `policy_type` 动态加载。新增 base 策略时需：
+1. 在 `_create_base_policy` 中增加分支
+2. 实现 `get_upper_body_home()` 返回上肢归位姿态（替代 AsapLoco 的 `upper_body_ref`）
+3. 在 `_handle_cmd` 中用 `hasattr` 分发策略特定键位
