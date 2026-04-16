@@ -26,6 +26,7 @@
 | `m1_asap_loco_baseline.md` | M1 执行计划（核心框架 + ASAP loco）✅ |
 | `m1_5_asap_mimic_switch.md` | M1.5 执行计划（ASAP Mimic + 切换流程打磨）✅ |
 | `m1_5_verification_plan.md` | M1.5 与 ASAP 对齐验证记录（CR7 等问题） |
+| `superpowers_workflow.md` | Superpowers skills 与仓库规范（DEVELOPMENT_RULES / selftest）融合说明 |
 | `m2_beyondmimic_switch.md` | M2 执行计划（BeyondMimic + 切换）✅ |
 | `m3_sim2real.md` | M3 执行计划（Sim2Real + 安全 + 多输入）🚧 |
 | `research/asap_sim2real_analysis.md` | ASAP 架构调研报告 |
