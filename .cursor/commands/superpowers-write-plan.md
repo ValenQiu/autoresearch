@@ -1,0 +1,1 @@
+../../third_party/superpowers/commands/write-plan.md

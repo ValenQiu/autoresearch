@@ -1,0 +1,1 @@
+../../third_party/superpowers/agents/code-reviewer.md
