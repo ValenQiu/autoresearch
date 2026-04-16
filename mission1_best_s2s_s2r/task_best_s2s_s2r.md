@@ -82,7 +82,7 @@ dummy_task 已废弃。复盘见 `research/motion_tracking_controller_postmortem
 │  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐  │
 │  │ StateMachine │  │ InputHandler │  │ SafetyGuard  │  │
 │  │ PASSIVE      │  │ keyboard     │  │ height check │  │
-│  │ BASE_ACTIVE  │  │ xbox         │  │ joint limits │  │
+│  │ BASE_ACTIVE  │  │ xbox         │  │ joint limits* │  │
 │  │ TASK_ACTIVE  │  │ unitree_rc   │  │ auto e-stop  │  │
 │  │ E_STOP       │  │              │  │              │  │
 │  └──────┬───────┘  └──────────────┘  └─────────────┘  │
@@ -111,6 +111,8 @@ dummy_task 已废弃。复盘见 `research/motion_tracking_controller_postmortem
 │  └────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────┘
 ```
+
+\* **joint limits**：默认对目标关节角做 URDF 裁剪；高动态 task 策略可设 `skip_position_clip`，与参考 deploy（仅力矩/包络限幅）一致。
 
 ## 5. 项目目录结构
 
@@ -341,14 +343,14 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 - 新增 `uhc/policies/universal_base.py`（统一包装 HoST / BFM-Zero）
 - 验收：机器人从躺倒 → 底座自主站起 → 进入 BeyondMimic → 结束后返回站立
 
-**M4.4：OmniXtreme / 高动态策略接入** 🚧 进行中
+**M4.4：OmniXtreme / 高动态策略接入** ✅ sim2sim 已验收（2026-04-16）
 
 - 将 [OmniXtreme](https://github.com/Perkins729/OmniXtreme) 等高动态策略作为新 task_policy 接入
 - 与 BeyondMimic 相同的封闭式 ONNX 接口（state → action）
 - 需对齐 OmniXtreme 的 obs 结构（flow-matching base policy + residual）
-- 验收：OmniXtreme 高动态动作在 sim2sim 中稳定执行
+- 验收：OmniXtreme 高动态动作在 sim2sim 中稳定执行（含与 PolicyRunner 同路径的 `skip_position_clip` 修复）
 
-**当前进展（2026-04-15）**：
+**进展摘要**：
 
 已完成：
 - [x] `OmniXtremePolicy` 实现（双策略 Base FM + Residual，3 个 ONNX 模型）
@@ -362,25 +364,24 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 - [x] `simulate_dt` 配置化（0.004，5 substeps，匹配参考的 decimation=5）
 - [x] `SafetyGuard` 高度阈值策略级覆盖（OmniXtreme 地面动作需 `safety_min_height: 0.0`）
 - [x] Friction 生命周期管理（TASK_ACTIVE 激活，EXIT 清除）
-- [x] Headless 2000 步（40 秒）稳定测试通过
-
-待解决（GUI 仍失败）：
-- [ ] **GUI 验收未通过**：headless 测试稳定但 GUI 交互下仍然倒地，疑似 headless 与 GUI 路径差异
-- [ ] 需与 hvgym 环境下的参考 `deploy_mujoco.py` 逐步对比（参考在 hvgym 下已验证全程稳定）
-- [ ] 可能涉及的差异：PolicyRunner 状态机流程（ASAP loco → 插值 → OmniXtreme 切换 vs 直接启动）、effort_limit clipping 路径、viewer sync 时序
+- [x] Headless 长程稳定测试通过
+- [x] **根因修复**：`SafetyGuard.clip_action()` 与 URDF 位置限位对高动态策略过严 → `skip_position_clip` + `PolicyRunner` 条件跳过（详见 `research/omnixrtreme_uhc_adaptation.md`）
+- [x] 复盘文档与 Cursor skill：**`research/omnixrtreme_uhc_adaptation.md`**、**`.cursor/skills/uhc-policy-adaptation/SKILL.md`**（后续新增模型适配默认遵循）
 
 **调试经验教训**：
 1. **参考代码的"bug"也是训练数据**：X1_list 的 formatting 差异虽然在物理上"不正确"，但策略就是用这些值训练的，"修正"反而引入不匹配
 2. **Position-based friction 补偿不等价于 per-substep friction**：前者用初始 dq 估算一次，后者每个 substep 用实时 dq 更新，高动态场景差异显著
 3. **MuJoCo XML 不同 = 完全不同的物理世界**：质量差 1.77kg、hip 力矩限差 60%，直接导致无法复现参考行为
 4. **FM 策略的 `initial_noise` 是必需的**：不是可选的探索噪声，而是 flow matching 去噪链的输入起点
+5. **框架默认 `clip_action` 可能破坏策略**：参考 `deploy_mujoco.py` 不对关节目标做 URDF 位置裁剪；UHC 若裁剪，高动态段会在数百步内失稳。策略若已有包络/力矩路径，应 `skip_position_clip: true`。
 
-**交付物**：
-- [ ] PolicyRunner 多策略在线切换（~15 行）
+**交付物（M4.4 相关）**：
+- [x] `uhc/policies/omnixrtreme.py` 及 `config/policies/omnixrtreme.yaml`
+- [x] `scripts/debug_omnixrtreme_audit.py`（数值对比 / 回归辅助）
+- [ ] PolicyRunner 多策略在线切换（M4.1，~15 行）
 - [ ] M4.2 选型报告（调研文档）
 - [ ] `uhc/policies/universal_base.py`（HoST 或 BFM-Zero 适配）
 - [ ] `uhc/core/state_machine.py`：新增 RECOVERING 状态
-- [ ] `uhc/policies/omnixtreme.py`
 - [ ] 自动化测试更新（多策略切换 + recovery 流程）
 
 ---

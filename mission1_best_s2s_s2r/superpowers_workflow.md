@@ -8,6 +8,7 @@
 |------|------|
 | `third_party/superpowers/` | git submodule，上游 `obra/superpowers` 的 `main` |
 | `.cursor/skills/superpowers-<name>/` | **符号链接** → `../../third_party/superpowers/skills/<name>/`，Cursor 自动发现 skill |
+| `.cursor/skills/uhc-policy-adaptation/` | **本仓库自有**：UHC 新策略适配核对表（与 superpowers 独立） |
 
 同步上游：
 
@@ -39,6 +40,7 @@ cd third_party/superpowers && git fetch origin && git pull --ff-only origin main
 1. **用户在本对话中的明确指令**（最高）  
 2. **DEVELOPMENT_RULES.md**（自测先行、全链路对齐、策略跑满等）  
 3. **`.cursor/skills/selftest-reality-alignment/SKILL.md`**（与「真实运行路径」对齐的自测设计）  
+3b. **`.cursor/skills/uhc-policy-adaptation/SKILL.md`**（新 ONNX 策略接入 UHC：物理节拍、安全层 `clip_action`、与参考 deploy 对齐）  
 4. **Superpowers skills**（流程与纪律：何时 brainstorm、何时 TDD、完成前验证等）  
 5. 默认系统行为（最低）
 
