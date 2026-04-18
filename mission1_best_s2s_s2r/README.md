@@ -11,7 +11,7 @@
 | M1.5 | ASAP Mimic 切换 + 操作流程打磨 | sim2sim loco↔mimic | **完成** |
 | M2 | BeyondMimic 适配 + 策略切换 | sim2sim 多策略 | **完成** |
 | M3 | Sim2Real + 安全 + 多输入 | 真机 | 待开始（等真机） |
-| M4 | 多策略在线切换 + 通用底座（BFM-Zero） | sim2sim 策略生态 | **进行中**：**M4.1**、**M4.2**、**M4.4** 已完成；**M4.3** 待开始 |
+| M4 | 多策略在线切换 + 通用底座（BFM-Zero） | sim2sim 策略生态 | **完成（带条件验收，2026-04-17）**：见 `task_best_s2s_s2r.json` 中 `acceptance_conditions`；**M4.3b** 延后 |
 | M5 | 通用追踪器 + 参考动作流式输入（SONIC/OpenTrack/BFM-Zero） | 开放式策略 | 待开始 |
 | M6 | 遥操作（Pico VR / MoCap） | 实时人类输入 | 待开始 |
 | M7 | 高层自主性（Text2Motion / VLM / VLA） | AI 驱动 | 待开始 |
@@ -40,7 +40,7 @@
 ## 快速导航
 
 - **项目是什么？** → `task_best_s2s_s2r.md` §1-2
-- **现在该做什么？** → **M4.3** 通用底座 GUI 验证 + RECOVERING 状态机；可选补 M4.1「5 次切换」专项验收与 selftest；**M3** 等真机；新策略接入先读 `.cursor/skills/uhc-policy-adaptation/SKILL.md`
+- **现在该做什么？** → **M5**（通用追踪器 / MotionProvider）；真机路线 **M3**；新策略接入先读 `.cursor/skills/uhc-policy-adaptation/SKILL.md`。M4 已带条件闭合，可选补 M4.1「5 次切换」专项 smoke。
 - **之前为什么失败？** → `research/motion_tracking_controller_postmortem.md`
 - **ASAP 代码怎么工作？** → `research/asap_sim2real_analysis.md`
 - **配置怎么简化？** → `task_best_s2s_s2r.md` §8

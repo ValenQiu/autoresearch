@@ -41,6 +41,7 @@
       "id": "M0",
       "name": "项目基建与环境配置",
       "scope": "基础设施",
+      "status": "completed",
       "acceptance": [
         "独立项目仓库 + 标准目录结构",
         "conda environment.yml + install.sh 一键安装",
@@ -53,6 +54,7 @@
       "id": "M1",
       "name": "核心框架 + ASAP Locomotion 基线",
       "scope": "sim2sim (MuJoCo)",
+      "status": "completed",
       "acceptance": [
         "ASAP loco 控制机器人站立/行走",
         "单终端启动 sim2sim",
@@ -131,13 +133,21 @@
       "id": "M4",
       "name": "多策略在线切换 + 通用底座",
       "scope": "sim2sim 策略生态",
-      "status": "in_progress",
-      "status_note": "M4.1、M4.2、M4.4 已完成；M4.3 待开始",
+      "status": "completed",
+      "status_note": "带条件验收通过（2026-04-17）；M4.3b 已延后至独立里程碑",
+      "acceptance_mode": "conditional",
+      "acceptance_conditions": [
+        "策略切换验收口径为「底座接受上肢目标」+ 线性插值，非以 BFM 全身目标替代上肢插值",
+        "RECOVERING 覆盖 TASK→BASE；在线 TASK→TASK 与 RECOVERING 对齐列入 M4.3b（deferred）",
+        "急停仅按键 o；高度类异常不自动 E_STOP（项目级约束）",
+        "躺倒启动：base_activate.sequence（先起身 goal 再 T-pose），阶段切换以时间/可选倾斜为主，sim2real 启动不依赖躯干高度",
+        "「从躺倒自主恢复站立」以机制 + selftest + 约定 sim 流程验收，非全场景形式化自动化证明"
+      ],
       "code_repo": "universal_humanoid_controller",
       "sub_phases": [
         "M4.1 多策略在线切换 Plan A（透明中转，~15行）",
         "M4.2 通用底座选型：BFM-Zero 选定 + BFMZeroPolicy 实现",
-        "M4.3 通用底座集成：RECOVERING状态 + 全身目标替代上肢插值",
+        "M4.3 通用底座集成：RECOVERING + 上肢目标切换 + BFM 恢复与 base_activate 序列",
         "M4.4 OmniXtreme 高动态策略接入"
       ],
       "sub_phase_status": {
@@ -160,7 +170,11 @@
           ],
           "report": "research/m4_2_bfm_zero_vs_host.md"
         },
-        "M4.3": { "status": "pending" },
+        "M4.3": {
+          "status": "completed",
+          "completed_at": "2026-04-17",
+          "notes": "RECOVERING；recovery latent；base_activate.sequence；插值 skill；M4.3b 不纳入"
+        },
         "M4.4": {
           "status": "completed",
           "completed_at": "2026-04-16",
@@ -177,17 +191,34 @@
       "acceptance": [
         "TASK_ACTIVE 下 ;/' 切换到另一策略不摔倒",
         "底座能从躺倒自主恢复站立",
-        "策略切换时底座接受全身目标（非手工上肢插值）",
+        "策略切换时底座接受上肢目标（当前阶段验收口径）",
         "OmniXtreme 高动态动作 sim2sim 稳定执行"
       ],
       "acceptance_progress": [
-        "M4.1 机制：代码已完成；5次连续切换专项回归建议用多 task profile 执行",
+        "M4 闭合（带条件）：见 acceptance_mode 与 acceptance_conditions",
+        "M4.1：已完成；多 task profile 连续切换建议仍作发布前 smoke",
+        "M4.2：BFM-Zero 集成 + 插值修复 + skill（uhc-interpolation-debugging / uhc-policy-adaptation）",
+        "M4.3：RECOVERING；确定性 recovery latent（tracking_tpose_step0）；base_activate.sequence 躺倒启动→起身→T-pose（时间/可选倾斜，不依赖启动高度）",
+        "M4.3b：deferred（M5 后择机）；见 id=M4.3b",
         "M4.4：sim2sim 已验收（含 skip_position_clip）",
-        "M4.2：已完成（BFM-Zero 选型 + headless 验证）；M4.3：待开始（GUI sim2sim + RECOVERING 状态机）",
-        "M4.2 集成修复：base↔task 插值起点统一为切换当帧实际关节角，修复腰部跳变与前倾回归",
-        "M4.2 体验对齐：BeyondMimic/OmniXtreme 的 loco_to_task_duration_s 从 2.5s 统一为 1.5s（与 ASAP 一致）",
-        "M4.2 经验沉淀：插值异常排错流程已形成可复用 skill（uhc-interpolation-debugging）"
+        "自动化：UHC scripts/selftest.py 全量通过（含状态机、M4.3 recovery stub、BFM base_activate 序列等）"
       ]
+    },
+    {
+      "id": "M4.3b",
+      "name": "在线 TASK→TASK 与 RECOVERING 路径对齐（可选）",
+      "scope": "sim2sim PolicyRunner（; / ' 在线换技能）",
+      "status": "deferred",
+      "status_note": "当前跳过；M5 完成后再决定是否捡起",
+      "code_repo": "universal_humanoid_controller",
+      "problem": "RECOVERING 仅在 TASK→BASE 且非 pending 在线切换时触发；TASK_ACTIVE 下在线切到另一 task 仍走旧中转，不进入 RECOVERING。",
+      "acceptance_if_resumed": [
+        "在线 TASK→TASK 与 TASK→BASE 的恢复语义一致或可配置",
+        "不破坏现有 M4.1 透明中转与上肢插值稳定性",
+        "selftest 增补或专项脚本覆盖该路径"
+      ],
+      "reminder_after_milestone": "M5",
+      "reminder_prompt": "询问维护者是否恢复开发 M4.3b"
     },
     {
       "id": "M5",

@@ -5,7 +5,7 @@
 ## 选型理由
 
 1. **29-DOF 完全对齐**：与 UHC `g1_29dof.yaml` 一致，无需额外处理缺失关节（HoST 为 23-DOF，缺 6 个手腕关节）
-2. **Promptable**：latent z（256 维）可实现 goal-reaching，为 M4.3 的"全身目标替代上肢插值"提供原生能力
+2. **Promptable**：latent z（256 维）可实现 goal-reaching，为 M4.3 的恢复与 `base_activate` 序列提供原生能力（验收口径为「上肢目标切换」，非强制全身替代插值）
 3. **部署栈完整**：deploy 分支提供 ONNX + sim2sim + sim2real 完整流程
 4. **能力超集**：BFM-Zero 可通过 goal z 复现 HoST 的 recovery 行为，同时支持 tracking 和 reward 推理
 5. **MuJoCo XML 兼容**：与 UHC 现有 `scene_29dof.xml` 质量差仅 0.001kg，ctrlrange 完全一致
@@ -68,12 +68,17 @@ z (256)
 
 总输入 = 465 + 256 = **721 维**
 
-## 后续（M4.3）
+## M4 里程碑闭合说明（带条件验收，2026-04-17）
 
-- MuJoCo GUI 端到端 sim2sim 验证（当前为 headless）
-- RECOVERING 状态机扩展
-- goal z 驱动的全身策略切换过渡
-- 跌倒检测 → BFM-Zero goal z 引导站起 → BASE_ACTIVE
+本节原「后续（M4.3）」所列能力已按**收窄后的验收口径**在 UHC 落地并记入 `mission1_best_s2s_s2r/task_best_s2s_s2r.json`（`acceptance_mode: conditional`）。
+
+| 原设想 | 实际闭合口径 |
+|--------|----------------|
+| goal 驱动全身替代上肢插值 | **策略切换仍以「底座 + 上肢目标/插值」为主**；BFM 下肢不强行替代整段插值（避免不可达姿态） |
+| 全身统一 | **TASK→BASE 的 RECOVERING** 用 BFM + 固定 recovery latent；**躺倒启动**用 `base_activate.sequence`（先 `fallAndGetUp1_subject4_2193` 再 `tracking_tpose_step0`，阶段切换以时间/可选倾斜为主，**启动不依赖躯干高度**，便于 sim2real） |
+| 在线换技能与 RECOVERING 统一 | **延后为 M4.3b**（deferred），不阻塞 M4 闭合 |
+
+详细条件列表见仓库内 `task_best_s2s_s2r.json` → M4 → `acceptance_conditions`。
 
 ## M4.2 集成排障补充（2026-04-16）
 

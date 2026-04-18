@@ -202,27 +202,31 @@ universal_humanoid_controller/          ← 新独立项目
 
 ## 7. Milestones
 
-### M0: 项目基建与环境配置
+> **与 `task_best_s2s_s2r.json` 对齐**：本节勾选反映当前交付状态；权威状态字段以 JSON 中各 `id.status` 为准。
+
+### M0: 项目基建与环境配置 ✅（已完成）
+
 **目标**：项目骨架、开发环境、CI 基础设施就绪。任何人在任何机器上能一键搭建环境。
 
 **交付物**：
-- [ ] 独立项目仓库 + 目录结构
-- [ ] `environment.yml` + `install.sh`（conda 一键安装）
-- [ ] `Dockerfile` + `docker_run.sh`（Docker 一键启动）
-- [ ] 基础 Python 包结构（`uhc/`）可 import
-- [ ] 配置加载框架（robot / policy / profile YAML）
-- [ ] agent skill / workflow 文档
+- [x] 独立项目仓库 + 目录结构（`universal_humanoid_controller`）
+- [x] `environment.yml` + `install.sh`（conda 一键安装）
+- [x] `Dockerfile` + `docker_run.sh`（Docker 一键启动）
+- [x] 基础 Python 包结构（`uhc/`）可 import
+- [x] 配置加载框架（robot / policy / profile YAML）
+- [x] agent skill / workflow 文档（本仓库 `.cursor/skills/`、`superpowers_workflow.md`；UHC 侧 `AGENTS.md`）
 
-### M1: 核心框架 + ASAP Locomotion 基线
+### M1: 核心框架 + ASAP Locomotion 基线 ✅（已完成）
+
 **目标**：在 sim2sim (MuJoCo) 中用 ASAP locomotion 策略控制机器人站立/行走。
 
 **交付物**：
-- [ ] MujocoBackend：单终端启动，sim 进程自动管理
-- [ ] AsapLocoPolicy：加载 `model_6600.onnx`，观测拼接，推理，关节控制
-- [ ] StateMachine：PASSIVE → BASE_ACTIVE → E_STOP 全流程
-- [ ] InputHandler：键盘控制（`i` 初始化 / `]` 启动 / `o` 急停）
-- [ ] 模型加载支持本地路径和 WandB
-- [ ] 自动化测试：站立稳定性 + 行走稳定性
+- [x] MujocoBackend：单终端启动，sim 进程自动管理
+- [x] AsapLocoPolicy：加载 `model_6600.onnx`，观测拼接，推理，关节控制
+- [x] StateMachine：PASSIVE → BASE_ACTIVE → E_STOP 全流程
+- [x] InputHandler：键盘控制（`i` 初始化 / `]` 启动 / `o` 急停）
+- [x] 模型加载支持本地路径和 WandB（`uhc/core/model_loader.py`）
+- [x] 自动化测试：站立稳定性 + 行走稳定性（`scripts/selftest.py` 等）
 
 ### M1.5: ASAP Mimic 切换 + 操作流程打磨 ✅（已完成 2026-04-15）
 
@@ -281,7 +285,8 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 - phase/终止条件验证：必须跑 100%（11284 steps for dance2_subject3）
 - selftest 各阶段步数应从 policy config 读取，不得硬编码
 
-### M3: Sim2Real + 安全体系 + 多输入
+### M3: Sim2Real + 安全体系 + 多输入（进行中，`json.status`: planned）
+
 **目标**：在 G1 真机上跑通全流程。PolicyRunner 和所有 Policy 类不改动，只替换底层 Backend。
 
 **子阶段**：
@@ -290,33 +295,33 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 - **M3.1 UnitreeBackend**：与 MujocoBackend 完全兼容接口；`read_state()` 映射 SDK LowState；`write_action()` 输出 LowCmd；心跳超时检测；`base_lin_vel` IMU 积分估计；简化 FK 计算 anchor body obs
 - **M3.2 安全体系增强**：增加关节速度限幅、IMU 姿态异常检测（roll/pitch > 45°）、控制频率监控；E_STOP 真机阻尼制动模式（kp=0, kd=适中）
 - **M3.3 Xbox 手柄支持**：`uhc/input/xbox.py`；与键盘完全相同的语义映射；无手柄时自动降级键盘
-- **M3.4 Profile 与启动**：`sim2real_g1_loco.yaml`、`sim2real_g1_bm.yaml`；PolicyRunner backend 分发逻辑
+- **M3.4 Profile 与启动**：`sim2real_g1_loco.yaml`、loopback 用 `sim2real_g1_loopback.yaml`；PolicyRunner backend 分发逻辑
 - **M3.5 测试与验收**：`selftest_real.py`（mock DDS 全覆盖）；真机人工验收操作手册
 
-**交付物**：
-- [ ] `uhc/backends/unitree_backend.py`
-- [ ] `uhc/utils/state_estimator.py`（线速度积分）
-- [ ] `uhc/utils/simple_fk.py`（anchor body 简化 FK）
+**交付物**（与代码现状对齐；未勾项仍为 M3 收口目标）：
+- [x] `uhc/backends/unitree_backend.py`
+- [x] 线速度估计（当前在 `unitree_backend` 内 `_BaseVelocityEstimator`，**非**独立 `uhc/utils/state_estimator.py`；若日后拆模块可再单列文件）
+- [x] 躯干/锚点相关量（当前为 pelvis/torso 简化几何，**非**独立 `simple_fk.py`；BeyondMimic 等用的 `body_xpos` 在 mock/简化路径下已提供）
 - [ ] `uhc/input/xbox.py`
-- [ ] `config/robots/g1_29dof_real.yaml`
-- [ ] `config/profiles/sim2real_g1_loco.yaml` / `sim2real_g1_bm.yaml`
-- [ ] `scripts/check_real_env.py`
-- [ ] `scripts/selftest_real.py`（mock 模式全 PASS）
+- [x] `config/robots/g1_29dof_real.yaml`
+- [x] `config/profiles/sim2real_g1_loco.yaml`；loopback：`config/profiles/sim2real_g1_loopback.yaml`
+- [x] `scripts/check_real_env.py`
+- [x] `scripts/selftest_real.py`（mock / DDS 契约自测；**真机全量验收仍以 JSON M3 acceptance 为准**）
 - [ ] 真机人工验收：5 次 loco↔BeyondMimic 切换不摔倒
 
 **详见**：`m3_sim2real.md`
 
-### M4: 多策略在线切换 + 通用底座
+### M4: 多策略在线切换 + 通用底座 ✅（已完成，带条件；`json.status`: completed）
 
-**目标**：将 UHC 从"单次切换"升级为"多策略在线切换"，并引入通用底座替代固定站立姿态，实现任意姿态自主恢复与全身目标插值。
+**目标**：将 UHC 从"单次切换"升级为"多策略在线切换"，并引入通用底座（BFM-Zero）与可控恢复流程；**闭合口径**以 `task_best_s2s_s2r.json` 中 **M4 → `acceptance_conditions`** 为准（带条件验收，非「全身目标替代上肢插值」）。**M4.3b** 见下节，不阻塞 M4 闭合。
 
-**M4 总进度（2026-04）**：
+**M4 总进度（2026-04，已闭合）**：
 
 | 子阶段 | 状态 | 说明 |
 |--------|------|------|
 | **M4.1** 多策略透明中转 | ✅ **已完成** | `PolicyRunner`：`;`/`'` + `_pending_task_switch_idx`，详见 `m4_multi_policy_switch.md` |
 | **M4.2** 通用底座选型 | ✅ **已完成** | BFM-Zero 选定 + `BFMZeroPolicy` 实现 + headless 验证通过，详见 `research/m4_2_bfm_zero_vs_host.md` |
-| **M4.3** 通用底座集成 | 🚧 待开始 | `RECOVERING`、`universal_base.py` |
+| **M4.3** 通用底座集成 | ✅ **已完成（带条件）** | `RECOVERING`、recovery latent、`base_activate.sequence`（躺倒启动→起身→T-pose）；上肢目标切换验收；**M4.3b**（在线 TASK→TASK 与 RECOVERING 对齐）延后 |
 | **M4.4** OmniXtreme | ✅ **已完成** | sim2sim 验收、`skip_position_clip`、复盘与 skill |
 
 **M4.2 集成进展更新（2026-04-16）**：
@@ -356,12 +361,17 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 - `scripts/verify_bfm_zero.py`：6 项 headless 验证（obs 维度、目标 z、tracking z、动态加载）
 - 详见 `research/m4_2_bfm_zero_vs_host.md`
 
-**M4.3：通用底座集成**
-- 将 BFM-Zero 正式接入 UHC 作为 `base_policy`（M4.2 已实现基础 `BFMZeroPolicy` 类）
-- 状态机新增 `RECOVERING` 状态：跌倒检测 → RECOVERING(BFM-Zero goal z 引导站起) → BASE_ACTIVE
-- 策略切换时：目标策略的 `get_full_body_target()` → BFM-Zero 接受 goal z → 自主全身过渡（替代手工上肢插值）
-- MuJoCo GUI 端到端验收（M4.2 仅完成 headless 验证）
-- 验收：机器人从躺倒 → BFM-Zero 自主站起 → 进入 BeyondMimic → 结束后返回站立
+**M4.3：通用底座集成**（✅ 已交付，验收口径见 JSON `acceptance_conditions`）
+- BFM-Zero 作为 `base_policy`；状态机 `RECOVERING`（TASK→BASE）；recovery 用确定性 goal latent（如 `tracking_tpose_step0`）
+- **策略切换**：以「底座 + **上肢**目标/插值」为主（非强制全身目标替代插值）
+- **躺倒标准化启动**：`base_activate.sequence`（如先 `fallAndGetUp1_subject4_2193` 再 `tracking_tpose_step0`），阶段切换以**时间/可选倾斜**为主，**启动不依赖躯干高度**（利 sim2real）
+- 原「全身目标插值」设想未作为 M4 必达项；在线 TASK→TASK 与 RECOVERING 统一见 **M4.3b**（deferred）
+
+### M4.3b：在线 TASK→TASK 与 RECOVERING 路径对齐（deferred）
+
+- **状态**：与 `task_best_s2s_s2r.json` 一致 — `status: deferred`，约定 **M5 完成后再决定是否捡起**。
+- **问题摘要**：`RECOVERING` 当前主要在 TASK→BASE；TASK_ACTIVE 下 `;`/`'` 在线换技能仍走透明中转，不强制进入 RECOVERING。
+- **若恢复开发**：见 JSON 中 `acceptance_if_resumed`。
 
 **M4.4：OmniXtreme / 高动态策略接入** ✅ sim2sim 已验收（2026-04-16）
 
@@ -397,16 +407,15 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 
 **交付物（M4 汇总）**：
 - [x] **M4.1** PolicyRunner 多策略在线切换（`_pending_task_switch_idx` + `;`/`'`，见 `m4_multi_policy_switch.md`）
-- [ ] **M4.2** 选型报告（调研文档：HoST vs BFM-Zero）
-- [ ] **M4.3** `uhc/policies/universal_base.py`（HoST 或 BFM-Zero 适配）
-- [ ] **M4.3** `uhc/core/state_machine.py`：新增 RECOVERING 状态
+- [x] **M4.2** 选型报告：`research/m4_2_bfm_zero_vs_host.md`
+- [x] **M4.3** `BFMZeroPolicy` + `RECOVERING` + recovery / `base_activate`（见 UHC `bfm_zero.yaml`、`policy_runner.py`）；**未**单独交付 `universal_base.py`（BFM 即底座实现）
 - [x] **M4.4** `uhc/policies/omnixrtreme.py` 及 `config/policies/omnixrtreme.yaml`
 - [x] **M4.4** `scripts/debug_omnixrtreme_audit.py`（数值对比 / 回归辅助）
-- [ ] 自动化测试更新（多策略切换专项 + M4.3 recovery 流程）
+- [x] 自动化测试：`universal_humanoid_controller/scripts/selftest.py` 含状态机、recovery 路径、BFM base_activate 序列等（全量 PASS 以当时仓库为准）
 
 ---
 
-### M5: 通用追踪器 + 参考动作流式输入
+### M5: 通用追踪器 + 参考动作流式输入（planned）
 
 **目标**：UHC 从"策略 = 单一 ONNX + 固定动作"升级为"通用追踪器 + 实时参考动作流"。一个 ONNX 追踪无限种动作，参考动作来源可以是文件、手柄、遥操设备。
 
@@ -461,7 +470,7 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 
 ---
 
-### M6: 遥操作（Teleoperation）
+### M6: 遥操作（Teleoperation）（planned）
 
 **目标**：参考动作来源从文件变为实时人类输入设备，实现真人→机器人的实时动作迁移。
 
@@ -485,7 +494,7 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 
 ---
 
-### M7: 高层自主性（Planner / VLM / VLA）
+### M7: 高层自主性（Planner / VLM / VLA）（planned）
 
 **目标**：参考动作来源从人类变为 AI，接入规划器和大模型实现语言/视觉驱动的机器人行为。
 

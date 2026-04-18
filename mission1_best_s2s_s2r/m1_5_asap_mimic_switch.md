@@ -56,7 +56,7 @@ M2 (BeyondMimic) 在此基础上只需额外处理参数差异。
 
 ## 需要的模型文件
 
-自 ASAP 复制 mimic 技能 ONNX（示例：`models/mimic/kick_level1/...`）。交付时 **14 个 ASAP mimic 技能**均已纳入 profile（如 `sim2sim_all_mimic.yaml`），含 CR7 等代表性动作。
+自 ASAP 复制 mimic 技能 ONNX（示例：`models/mimic/kick_level1/...`）。交付时 ASAP mimic 技能已纳入综合 profile（如 `config/profiles/sim2sim_bfm_zero_all.yaml`），含 CR7 等代表性动作。
 
 ## 操作流程（完整版，M1.5 交付后）
 

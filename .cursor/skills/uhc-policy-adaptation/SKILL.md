@@ -46,6 +46,7 @@ description: Use when adding a new ONNX policy to universal_humanoid_controller,
    - **症状**：无裁剪长程稳定，有裁剪在数百步内倒地；或膝关节/踝目标被卡在边界附近发抖。
    - **做法**：策略若已有包络反解 + `ctrl` 限幅，在策略 YAML 设 `skip_position_clip: true`，并实现 `BasePolicy.skip_position_clip()` 返回 True；`PolicyRunner` 仅在 `TASK_ACTIVE` 尊重该标志。
 2. **`safety_min_height`**：地面动作需策略级覆盖为 `0.0` 或足够低，避免假阳性 E_STOP。
+3. **项目级急停约束（强制）**：若需求明确“仅按键 `o` 急停”，禁止在 `PolicyRunner` 中新增任何自动 `Event.E_STOP` 触发（如 timeout、高度阈值、恢复失败）。自动路径只能告警或回退到安全状态，急停由人工按键触发。
 
 ### E. 验证方法
 
@@ -76,3 +77,5 @@ description: Use when adding a new ONNX policy to universal_humanoid_controller,
 1. 在 `_create_base_policy` 中增加分支
 2. 实现 `get_upper_body_home()` 返回上肢归位姿态（替代 AsapLoco 的 `upper_body_ref`）
 3. 在 `_handle_cmd` 中用 `hasattr` 分发策略特定键位
+
+**M4.3 恢复确定性约束**：自动进入 `RECOVERING` 时必须显式设置固定 latent z（可选两类：1）`reward_locomotion.pkl` 中 **`move-ego-0-0`** 等中性 ego 指令；2）将人工验证有效的 `n-p-t` 结果按 `advance_tracking_z()` 公式固化为自定义 goal key，如 `tracking_tpose_step0`）。不得复用“上一次手动 n/p/t 的 z 状态”。手动 z 切换能力保留在人工操作路径。
