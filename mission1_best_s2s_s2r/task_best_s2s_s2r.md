@@ -285,31 +285,39 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 - phase/终止条件验证：必须跑 100%（11284 steps for dance2_subject3）
 - selftest 各阶段步数应从 policy config 读取，不得硬编码
 
-### M3: Sim2Real + 安全体系 + 多输入（进行中，`json.status`: planned）
+### M3: Sim2Real 重建（M3-R，`json.status`: in_progress）
 
-**目标**：在 G1 真机上跑通全流程。PolicyRunner 和所有 Policy 类不改动，只替换底层 Backend。
+**目标**：以全新实现路径重建 `UHC -> unitree_sdk -> mujoco -> unitree_sdk -> UHC`，并在 `sim2real_g1_loco` 先恢复稳定闭环，再准备真机最小切换。
 
-**子阶段**：
+**重建原则**：
+- 不直接复用旧 loopback 实现细节（仅保留经验/风险结论）
+- `unitree_sdk -> mujoco` 语义严格对齐 ASAP
+- 验收采用“双轨”：功能通过 + 新旧实现差分审查（防灾难性更新）
+- 引入 teacher 对照（RoboJuDo）：吸收其模块化与多策略接入优势，但严格遵循本项目安全约束
 
-- **M3.0 环境准备**：`unitree_sdk2py` 安装验证；`g1_29dof_real.yaml`（通信/安全阈值覆盖）；`check_real_env.py` 连通性检查
-- **M3.1 UnitreeBackend**：与 MujocoBackend 完全兼容接口；`read_state()` 映射 SDK LowState；`write_action()` 输出 LowCmd；心跳超时检测；`base_lin_vel` IMU 积分估计；简化 FK 计算 anchor body obs
-- **M3.2 安全体系增强**：增加关节速度限幅、IMU 姿态异常检测（roll/pitch > 45°）、控制频率监控；E_STOP 真机阻尼制动模式（kp=0, kd=适中）
-- **M3.3 Xbox 手柄支持**：`uhc/input/xbox.py`；与键盘完全相同的语义映射；无手柄时自动降级键盘
-- **M3.4 Profile 与启动**：`sim2real_g1_loco.yaml`、loopback 用 `sim2real_g1_loopback.yaml`；PolicyRunner backend 分发逻辑
-- **M3.5 测试与验收**：`selftest_real.py`（mock DDS 全覆盖）；真机人工验收操作手册
+**子阶段（M3.R0~M3.R5）**：
+- **M3.R0 基线准备**：从 `02e7e79` 建分支 `sim2real_debug`；迁移 `29efe68` 并追加依赖修复补丁
+- **M3.R1 对齐矩阵冻结**：冻结 topic/字段/时序/freshness/映射对照表
+- **M3.R2 UnitreeBackend 深度 debug**：先证据采集，再做最小重构与可观测性增强
+- **M3.R3 Bridge 全新实现**：按 ASAP 时序与控制语义重建 `unitree_sdk -> mujoco`
+- **M3.R4 Loco 闭环恢复**：在 `sim2real_g1_loco` 下通过 INIT/ACTIVATE/WALK/E_STOP 与稳定性指标
+- **M3.R5 差分验收与真机准备**：完成新旧差分审查，固化 `lo -> enp2s0` 最小切换 checklist
 
-**交付物**（与代码现状对齐；未勾项仍为 M3 收口目标）：
-- [x] `uhc/backends/unitree_backend.py`
-- [x] 线速度估计（当前在 `unitree_backend` 内 `_BaseVelocityEstimator`，**非**独立 `uhc/utils/state_estimator.py`；若日后拆模块可再单列文件）
-- [x] 躯干/锚点相关量（当前为 pelvis/torso 简化几何，**非**独立 `simple_fk.py`；BeyondMimic 等用的 `body_xpos` 在 mock/简化路径下已提供）
-- [ ] `uhc/input/xbox.py`
-- [x] `config/robots/g1_29dof_real.yaml`
-- [x] `config/profiles/sim2real_g1_loco.yaml`；loopback：`config/profiles/sim2real_g1_loopback.yaml`
-- [x] `scripts/check_real_env.py`
-- [x] `scripts/selftest_real.py`（mock / DDS 契约自测；**真机全量验收仍以 JSON M3 acceptance 为准**）
-- [ ] 真机人工验收：5 次 loco↔BeyondMimic 切换不摔倒
+**当前文档交付物（计划层）**：
+- [x] `m3_sim2real.md`（重建版顶层方案 + gate）
+- [x] `plan_uhc_unitree_sdk_mujoco_mock.md`（重建入口与执行顺序）
+- [x] `rebuild_m3_acceptance_matrix.md`（ASAP 对齐与验收矩阵）
+- [x] `research/robojudo_teacher_distilled.md`（teacher 深度蒸馏与追赶->超越建议）
+- [x] `task_best_s2s_s2r.json` M3 状态结构更新（M3.R0~M3.R5）
+- [ ] 代码执行阶段交付（进行中）
+  - [x] P1：`sim2real_debug` 基线分支 + `29efe68` + wandb 依赖修复
+  - [x] P2：UnitreeBackend 审查修复 + `selftest_real.py` 27/27
+  - [x] P3：`unitree_sdk -> mujoco` bridge 时序对齐实现（`selftest_loopback_bridge_smoke.py` + `selftest_loopback_policy_runner_smoke.py`）
+  - [x] Gate C（本机自动化）：`selftest_loopback_policy_runner_smoke.py --loco` + `sim2real_g1_loco_loopback.yaml` 已通过
+  - [ ] Gate C（真机）：`sim2real_g1_loco` 现场闭环验收（INIT/ACTIVATE/WALK/E_STOP）
+  - [ ] Gate D：新旧实现（`main` vs `sim2real_debug`）差分审查报告与高风险关闭
 
-**详见**：`m3_sim2real.md`
+**详见**：`m3_sim2real.md`、`rebuild_m3_acceptance_matrix.md`
 
 ### M4: 多策略在线切换 + 通用底座 ✅（已完成，带条件；`json.status`: completed）
 

@@ -103,30 +103,54 @@
     },
     {
       "id": "M3",
-      "name": "Sim2Real + 安全 + 多输入",
-      "scope": "真机部署",
-      "status": "planned",
+      "name": "Sim2Real 推倒重来（M3-R）",
+      "scope": "loopback 重建 + 真机最小切换准备",
+      "status": "in_progress",
       "plan_doc": "m3_sim2real.md",
+      "acceptance_doc": "rebuild_m3_acceptance_matrix.md",
+      "teacher_reference_doc": "research/robojudo_teacher_distilled.md",
+      "base_commit_for_rebuild": "02e7e79e4b8d9a315dbb6c888af8774da54f1d0a",
+      "work_branch": "sim2real_debug",
+      "keep_commits_before_rebuild": [
+        "29efe68 (tools/wandb)",
+        "patch commit: fix dependencies for wandb download utility"
+      ],
+      "rebuild_constraints": [
+        "不直接复用旧 loopback 实现细节",
+        "unitree_sdk -> mujoco 语义严格对齐 ASAP",
+        "验收时必须做新旧实现差分审查，防灾难性逻辑变更",
+        "吸收 RoboJuDo 的模块化优点，但不突破本项目安全约束"
+      ],
       "sub_phases": [
-        "M3.0 环境准备（SDK 安装 + g1_29dof_real.yaml + check_real_env.py）",
-        "M3.1 UnitreeBackend（DDS + FK + IMU 线速度估计）",
-        "M3.2 安全体系增强（速度/姿态/心跳/真机 E_STOP 阻尼制动）",
-        "M3.3 Xbox 手柄（与键盘语义等价）",
-        "M3.4 Sim2Real Profile + PolicyRunner backend 分发",
-        "M3.5 selftest_real.py(mock) + 真机人工验收"
+        "M3.R0 基线准备（新分支 + 迁移 29efe68 + 工具依赖修复）",
+        "M3.R1 ASAP 对齐矩阵冻结（topic/字段/时序/freshness/映射）",
+        "M3.R2 UnitreeBackend 深度 debug 与重构（先证据后实现）",
+        "M3.R3 bridge 全新实现（unitree_sdk->mujoco 严格对齐 ASAP）",
+        "M3.R4 sim2real_g1_loco 闭环恢复与稳定性验收",
+        "M3.R5 新旧实现差分审查 + 真机最小切换 checklist 固化"
+      ],
+      "gates": [
+        "Gate A: R1 对齐矩阵完整且无 TBD",
+        "Gate B: R3 后 loopback bridge/policyrunner smoke 全通过",
+        "Gate C: R4 后 loco 指标验收通过",
+        "Gate D: R5 后差分审查关闭高危项",
+        "Gate A+: 适配层边界与数据契约冻结（quat/order/cmd 语义）",
+        "Gate D+: 新旧行为差分报告产出并签字"
       ],
       "acceptance": [
-        "UnitreeBackend 接口与 MujocoBackend 完全兼容",
-        "selftest_real.py mock 模式全 PASS（通信超时/关节限幅/IMU 异常）",
-        "G1 真机 PASSIVE→BASE_ACTIVE 站立稳定 ≥5s",
-        "G1 真机 loco 行走有速度响应",
-        "G1 真机 loco↔BeyondMimic 切换 5 次不摔倒",
-        "断网 100ms → 自动 E_STOP",
-        "Xbox 手柄 START/B/X/BACK/摇杆全功能验证"
+        "selftest_real.py 契约测试通过",
+        "selftest_loopback_bridge_smoke.py 通过",
+        "selftest_loopback_policy_runner_smoke.py 通过",
+        "sim2real_g1_loco: INIT/ACTIVATE/WALK/E_STOP 全流程稳定",
+        "新旧实现差分审查无高严重灾难性风险"
       ],
-      "key_risks": [
-        "base_lin_vel 真机 IMU 积分漂移 → 先接 loco（不依赖线速度），BeyondMimic 后调优",
-        "真机 PD gains 需重新调参 → 保守系数 0.7 开始，悬空验证后再落地"
+      "execution_progress": [
+        "P1 completed: sim2real_debug baseline branch + 29efe68 + wandb compatibility patch",
+        "P2 completed: UnitreeBackend alignment fixes + config extends merge + selftest_real 27/27",
+        "P3 completed: mock_unitree_mujoco_bridge + sim2real_g1_loopback(_smoke) + Gate B loopback smoke PASS",
+        "Gate C local automation completed: selftest_loopback_policy_runner_smoke.py --loco with sim2real_g1_loco_loopback.yaml PASS",
+        "Gate C real robot acceptance pending: sim2real_g1_loco INIT/ACTIVATE/WALK/E_STOP field validation",
+        "Gate D pending: main vs sim2real_debug differential review report and high-risk closure"
       ]
     },
     {

@@ -49,6 +49,14 @@ python scripts/selftest_loopback_policy_runner_smoke.py
 
 期望输出含 `[PASS]`，且最终状态机为 `E_STOP`。
 
+**Gate C（M3.R4，ASAP Loco 与 `sim2real_g1_loco` 同拓扑）**：桥与 UHC 均使用 `config/profiles/sim2real_g1_loco_loopback.yaml`，再跑 headless：
+
+```bash
+python scripts/mock_unitree_mujoco_bridge.py --profile config/profiles/sim2real_g1_loco_loopback.yaml
+# 另开终端：
+python scripts/selftest_loopback_policy_runner_smoke.py --loco
+```
+
 ## 编排脚本
 
 ```bash
