@@ -2,6 +2,15 @@
 
 本文件供 **Cursor / Codex / 其他 Agent** 与人类协作者阅读：列出与本仓库相关的**团队可见 skills** 与强制顺序。
 
+## 入口 skill（任何任务先读）
+
+| Skill | 作用 |
+|-------|------|
+| **autoresearch-house-rules** | [`.cursor/skills/autoresearch-house-rules/SKILL.md`](.cursor/skills/autoresearch-house-rules/SKILL.md) — 项目强制规范 + skill 导航总表 |
+| **karpathy-coding-discipline** | [`.cursor/skills/karpathy-coding-discipline/SKILL.md`](.cursor/skills/karpathy-coding-discipline/SKILL.md) — 通用编码纪律（Think / Simplicity / Surgical / Goal-Driven），[`CLAUDE.md`](CLAUDE.md) 顶部的 skill 化版本 |
+
+两者一起构成：**通用编码纪律 + 本仓库强制规范 + 跨 skill 导航**。其余 skill 由这两份按触发场景指引加载。
+
 ## 新策略 / 新 ONNX 接入 UHC 时（强制）
 
 **在修改 `universal_humanoid_controller` 的 Policy 类、策略 YAML、或仿真/安全相关代码之前，必须先阅读 skill：**
