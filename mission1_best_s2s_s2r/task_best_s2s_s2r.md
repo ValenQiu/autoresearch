@@ -287,35 +287,114 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 
 ### M3: Sim2Real 推倒重来（项目级重置 @ 2026-04-23，`json.status`: in_progress）
 
-**目标**：以全新实现路径重建 `UHC -> unitree_sdk -> mujoco -> unitree_sdk -> UHC`，并在 `sim2real_g1_loco` 先恢复稳定闭环，再准备真机最小切换。
+**目标**：在新分支 `sim2real_redo`（UHC `02e7e79` 起）重建 `UHC(UnitreeBackend) → unitree_sdk2py DDS → MuJoCo bridge → unitree_sdk2py DDS → UHC` 双向 loopback，并保证真机切换只改 `interface/domain`、不改策略层逻辑；除 wandb 预下载工具外不复用 attempt1/attempt2 任何实现。
 
-**项目级重置（2026-04-23）**：原 M3 两次 attempt（`main` 与 `sim2real_debug`）均被判为不可接受，全部归档，从 UHC `02e7e79` 起开新分支 `sim2real_redo`，除 wandb 预下载工具外不复用任何旧实现。详见 `m3_sim2real.md` §0.2 与 `.archive/main_m3/README.md`。
+**项目级重置（2026-04-23）**：原 M3 两次 attempt（`main` 与 `sim2real_debug`）均判定不可接受 → 全部 tag 归档（`archive/main-m3-attempt1@e1c664a`、`archive/sim2real-debug-m3-attempt2@0a661b6`），不参与当前开发。详见 `m3_sim2real.md` §0.2 与 `.archive/main_m3/README.md`。
 
-**重建原则**：
-- 仅保留 wandb 预下载工具（`tools/wandb_model_download/download_wandb_onnx.py`，UHC `sim2real_redo` 上 `b791b1c`）
-- attempt1/attempt2 的实现细节不参与开发决策，仅在 Gate D 做差分审查参照
-- `unitree_sdk -> mujoco` 语义严格对齐 ASAP
+**重建原则**（强制）：
+- 仅保留 wandb 预下载工具（`tools/wandb_model_download/download_wandb_onnx.py`，UHC `sim2real_redo` 上 `b791b1c`）+ profile 自动写回（`7a4f7ce`）
+- attempt1/attempt2 的实现细节不参与开发决策，仅在 P6 / Gate D 做差分审查参照
+- `unitree_sdk → mujoco` 语义严格对齐 ASAP（控制时序、字段语义、freshness 必须一致）
 - 急停仅按键（项目级约束），`PolicyRunner` 禁止新增自动 `E_STOP` 触发
 - selftest 必须走 `PolicyRunner` 同路径（`selftest-reality-alignment` skill）
-- 引入 teacher 对照（RoboJuDo）：吸收其模块化与多策略接入优势
+- 引入 teacher 对照（RoboJuDo）：统一适配层 + 切换管理器化 + 统一命令面 + 可观测性内建
 
-**子阶段（P0~P6，在 `sim2real_redo` 分支上推进）**：
-- **P0 基线 + wandb 工具**：✅ 完成（UHC `b791b1c`，wandb 工具 verified）
-- **P1 跨仓 skill 同步**：✅ 完成（UHC `.cursor/skills/` 镜像 + 2 个新 skill）
-- **P2 对齐矩阵重冻（Gate A）**：待开始；**不复用** `.archive/main_m3/rebuild_m3_acceptance_matrix.md`
-- **P3 UnitreeBackend 最小契约**：待开始；`selftest_real.py` 重写走 `PolicyRunner` 同路径
-- **P4 loopback bridge 重实现（Gate B）**：待开始；按 `unitree-g1-sdk-dds-mock` skill 先 headless smoke
-- **P5 loco 闭环（Gate C）**：待开始；loopback smoke → 真机
-- **P6 Gate D 差分审查**：待开始；审查 attempt1/attempt2，决定哪些设计可挽救
+**子阶段（P0~P6，全部在 `sim2real_redo` 分支上推进；与 `m3_sim2real.md` §M3.R0-R5 对应）**：
 
-**当前文档交付物**：
+#### P0  基线 + wandb 自动写回工具 ✅（已完成 2026-04-23）
+
+**目标**：建立干净基线分支与 profile 自愈下载链路。
+
+**交付物**：
+- [x] `archive/main-m3-attempt1@e1c664a` + `archive/sim2real-debug-m3-attempt2@0a661b6` 两个安全归档 tag
+- [x] UHC `sim2real_redo` 分支（基于 `02e7e79`）
+- [x] `tools/wandb_model_download/download_wandb_onnx.py` 移植 + `--help` / `--dry-run` 通过（UHC `b791b1c`）
+- [x] beyondmimic ONNX 实跑下载（12MB）且被 `onnxruntime` 加载验收
+- [x] `sync_profile_assets()` 重写为文本级 inplace patch（保留 YAML 注释 + 缩进）+ `scripts/run.py` 入口接线 + `--no-persist-profile` 逃生口（UHC `7a4f7ce`）
+- [x] 端到端验证：`sim2sim_bfm_zero_all.yaml` 自动持久化 `beyondmimic_dance.model_path`；26 行注释 100% 保留；第二次运行 idempotent（`changed=False, 0.00s`）
+
+#### P1  跨仓 skill 同步 + CLAUDE.md skill 化 ✅（已完成 2026-04-23）
+
+**目标**：把 autoresearch 上的 UHC 相关 skill 镜像到 UHC 仓库，让 UHC 单仓 clone 也能用上完整 agent 规则；同时把 ephemeral 的 `CLAUDE.md` 沉淀为可被 Cursor / Claude Code 长期发现的 skill。
+
+**交付物**：
+- [x] UHC `.cursor/skills/` 镜像：`uhc-policy-adaptation`（更新到 autoresearch 最新版）+ `selftest-reality-alignment` + `uhc-interpolation-debugging` + `unitree-g1-sdk-dds-mock` + `unitree-g1-documentation-distilled`（UHC `eeebffd`）
+- [x] 跨仓新 skill：`karpathy-coding-discipline` + `autoresearch-house-rules` 在 autoresearch 与 UHC 双仓部署（UHC `f40b9bc`）
+- [x] autoresearch `AGENTS.md` 入口表更新：`karpathy-coding-discipline` / `autoresearch-house-rules` 作为开场强制 skill
+- [x] UHC `AGENTS.md` 重写为 UHC 视角的 skill 索引（含「以 autoresearch 为权威源」声明）
+- [x] `CLAUDE.md` 标注「已 skill 化」（文件本身在 `.gitignore`，skill 才是 canonical 来源）
+
+#### P2  对齐矩阵重冻（Gate A）🚧（待开始）
+
+**目标**：在不依赖 `.archive/main_m3/rebuild_m3_acceptance_matrix.md` 的前提下，重新冻结 ASAP 语义对齐矩阵（topic / 字段 / 时序 / freshness / 映射），作为 P3-P5 实现期的硬 gate。
+
+**交付物**：
+- [ ] `m3_p2_alignment_matrix.md`（新文档）：每行 = 一个语义契约（`q / dq / kp / kd / tau / mode_pr / freshness_us / coordinate_frame / quat_convention`），列 = ASAP 参考值 / `unitree_sdk2py` 字段名 / UHC 期望值 / 验证脚本
+- [ ] Teacher 对齐子门禁 Gate A+：适配层边界与数据契约冻结（含 quat 约定、joint order 契约、cmd 字段语义），与 RoboJuDo 适配层做差分备注
+- [ ] 与 attempt1/attempt2 差异点列表（仅做风险评估输入；不复制实现）
+- [ ] 评审签字：人工 review + 无 TBD 项
+
+**验收（Gate A）**：对齐矩阵完整且无 TBD；评审通过；P3 起任何实现偏离须先回写矩阵再改代码。
+
+#### P3  UnitreeBackend 最小契约 🚧（待开始）
+
+**目标**：在 P2 矩阵约束下重新实现 `UnitreeBackend` 最小契约（读 LowState、写 LowCmd、freshness 检测、模式映射），并把 `selftest_real.py` 改为走 `PolicyRunner` 同路径（不再用旁路 backend mock）。
+
+**交付物**：
+- [ ] `uhc/backend/unitree_backend.py`（重写）：先做证据采集（边界输入/输出对照），再实现最小读写
+- [ ] freshness、frame source、cmd 序号、topic 统计内建可观测（不靠临时 `print`）
+- [ ] `scripts/selftest_real.py`（重写）：走 `PolicyRunner.setup() + run()` 同路径；headless；明确 PASS / FAIL；至少一个契约项对应 P2 矩阵每行
+- [ ] 与 attempt1/attempt2 同名脚本的设计差异说明（写在 commit message 或子文档，不放回 archive）
+
+**验收**：`selftest_real.py` 契约项全通过；可观测字段在日志中可见；`selftest-reality-alignment` skill 自检通过。
+
+#### P4  loopback bridge 重实现（Gate B）🚧（待开始）
+
+**目标**：按 `unitree-g1-sdk-dds-mock` skill 重新实现 `unitree_sdk → mujoco` bridge，明确控制循环时序（发布状态 / 消费命令 / 物理步进）；先 headless smoke，再接入 `PolicyRunner`。
+
+**交付物**：
+- [ ] `tools/loopback_bridge/`（新模块）：DDS 订阅 LowCmd → MuJoCo step → DDS 发布 LowState；时序与 ASAP 对齐
+- [ ] `scripts/selftest_loopback_bridge_smoke.py`：仅验证 bridge 自身的 LowCmd↔LowState 闭环（不接策略）
+- [ ] `scripts/selftest_loopback_policy_runner_smoke.py`：在 bridge 上跑 `PolicyRunner`（loco 策略，最小 episode）
+- [ ] Teacher 对齐子门禁 Gate B+：切换管理器日志可观测（含切换来源、插值阶段、延迟与 warmup 状态）
+
+**验收（Gate B）**：两个 smoke 脚本均通过；`q/dq/kp/kd/tau/mode_pr/freshness_us` 在 bridge 与策略两端的实测值与 P2 矩阵全对齐；无 freshness 报警。
+
+#### P5  loco 闭环 + Gate C 🚧（待开始）
+
+**目标**：在 `sim2real_g1_loco` profile 下完成 INIT/ACTIVATE/WALK/E_STOP 全流程；先 loopback 通过，再过渡到真机最小切换。
+
+**交付物**：
+- [ ] `config/profiles/sim2real_g1_loco.yaml`（重新评估；如需调整，差异写入 commit message）
+- [ ] loopback 端到端：站立 / 行走稳定指标（min_z、max_tilt、joint torque envelope）达 ASAP 参考门槛
+- [ ] 真机切换 checklist（`lo → enp2s0` + `domain_id`）固化到 `sop_sim2sim_to_sim2real.md`
+- [ ] 真机最小切换：仅 loco 策略，仅 PASSIVE → BASE_ACTIVE → E_STOP，不引入新策略
+
+**验收（Gate C）**：loopback 稳定通过指标门槛；真机切换 checklist 完整；首次真机站立 + 短行走人工验收通过。
+
+#### P6  Gate D 差分审查 🚧（待开始）
+
+**目标**：对 `archive/main-m3-attempt1` 与 `archive/sim2real-debug-m3-attempt2` 做形式化差分审查，决定哪些设计可挽救（仅作为 M5+ 的输入参考；M3 闭合不依赖此项）。
+
+**交付物**：
+- [ ] `research/m3_p6_attempt_diff_audit.md`：按 P2 矩阵逐项打分 attempt1 vs attempt2 vs 当前 sim2real_redo
+- [ ] 高风险未关闭项清单（若有）+ 是否阻塞 Gate D 的判定
+- [ ] Gate D+ 输出：「新旧行为差分报告」并关闭全部高风险项后，才允许进入更广的真机部署（M5+）
+
+**验收（Gate D）**：差分审查文档签字；无高危未关闭项；差异点要么吸收到 sim2real_redo，要么有明确的 reject rationale。
+
+---
+
+**当前文档交付物状态**：
 - [x] `m3_sim2real.md`（重置后顶层方案 + P0/P1 完成记录 + P2-P6 待开始）
 - [x] `plan_uhc_unitree_sdk_mujoco_mock.md`（保留；将在 P4 重新评估）
-- [x] `sop_sim2sim_to_sim2real.md`（保留；跨版本通用 SOP）
-- [x] `research/robojudo_teacher_distilled.md`（teacher 蒸馏）
-- [x] `research/m3_r5_main_vs_sim2real_debug_diff_review.md`（attempt1/attempt2 差分审查；Gate D 参考）
-- [x] `task_best_s2s_s2r.json` M3 状态结构更新（`reset_decision` + `archived_branches` + P0-P6 sub_phases）
-- [x] `.archive/main_m3/` 归档（含 `m3_original_deprecated.md` + 4 个弃用文档）
+- [x] `sop_sim2sim_to_sim2real.md`（保留；跨版本通用 SOP；P5 收尾时补真机切换 checklist）
+- [x] `research/robojudo_teacher_distilled.md`（teacher 蒸馏；P2/P4 引用）
+- [x] `research/m3_r5_main_vs_sim2real_debug_diff_review.md`（attempt1/attempt2 差分；P6 输入）
+- [x] `task_best_s2s_s2r.json` M3 结构（`reset_decision` + `archived_branches` + P0-P6 sub_phases）
+- [x] `.archive/main_m3/` 归档（`m3_original_deprecated.md` + 4 个弃用文档 + `README.md`）
+- [ ] `m3_p2_alignment_matrix.md`（P2 起新增）
+- [ ] `research/m3_p6_attempt_diff_audit.md`（P6 起新增）
 - [ ] 代码执行：P2-P6 待开始
 
 **详见**：`m3_sim2real.md`
