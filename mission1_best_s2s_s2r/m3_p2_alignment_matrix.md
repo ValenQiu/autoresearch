@@ -77,7 +77,7 @@
 | C.5.1 | 控制循环频率 | 50 Hz | 50 Hz | 策略训练约定 | `PolicyRunner.run()` | FROZEN |
 | C.5.2 | physics step | 200 Hz (`sim_dt=0.005`) | 200 Hz（官方 bridge 默认 `SIMULATE_DT=0.005`） | 官方 | `MujocoBackend.sim_dt` | FROZEN |
 | C.5.3 | state publish rate | — | **TBD**（官方 bridge 是否每 `sim_dt` 发一次？） | 官方 | Observability 实测 | TBD |
-| C.5.4 | cmd 消费策略 | 同步 write_cmd 立即 step | 最新帧（drop 旧帧）/ 排队？ | 官方 bridge 行为 | 代码审查 + 实测 | TBD |
+| C.5.4 | cmd 消费策略 | 同步 write_cmd 立即 step | **latest command + per-substep PD recompute @200Hz**（不使用“50Hz callback 一次算 torque 后冻结 4 个 substep”的模式） | ASAP / UHC sim2sim 对齐 | `tools/loopback_bridge/run_g1_bridge.py` + `scripts/smoke_loco_loopback.py` | FROZEN |
 
 ## 6. BeyondMimic worldToInit（DP2 决策执行）
 
@@ -114,3 +114,11 @@
 - [ ] P2.4：§8 风险点写完
 - [ ] P2.5：人工评审签字；签字后本文件 `status` 列全部 `FROZEN`
 - [ ] **Gate A**：满足上述所有 → 进入 P3（`uhc/backends/unitree_backend.py` 实现期）
+
+## 10. 调试复盘（2026-04-23）
+
+- INIT 抖动根因：bridge 在 DDS callback（50Hz）计算 PD，物理 200Hz 时 `ctrl` 冻结跨 4 个 substep，带宽不足导致高增益振荡。
+- 修复：bridge 改为每个 `mj_step` 重算 `tau = kp*(q_ref-q)+kd*(dq_ref-dq)+tau_ff`，并按 `actuator_ctrlrange` 限幅。
+- `]` 激活乱飞根因：上肢目标从 0 直接跳到 loco ref（elbow 约 1rad）导致饱和冲击。
+- 修复：`PolicyRunner` 在 `]` 时加入 1.5s 上肢插值过渡。
+- 诊断标准固定：bridge 必须输出 root pose + 全关节 q/qdot；先 bridge 单跑，再 INIT，再激活 loco，最后放绳。

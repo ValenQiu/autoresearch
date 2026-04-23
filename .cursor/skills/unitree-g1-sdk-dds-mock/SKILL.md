@@ -37,18 +37,21 @@ description: Use when implementing or debugging Unitree G1 sim2real communicatio
 ## 本机闭环 mock 实施模板
 
 1. 启动 mock bridge（订阅 `rt/lowcmd`，驱动 MuJoCo，发布 `rt/lowstate`）
-2. UHC 使用 `backend.type: unitree` + `mock: false`
-3. `communication.interface: lo`
-4. 验证：
-   - `scripts/selftest_real.py`
-   - `scripts/smoke_sim2real.sh preflight`
+2. UHC profile 使用：
+   - `backend.type: unitree`
+   - `backend.mode: mock`
+   - `backend.domain_id: 1`
+   - `backend.interface: lo`
+3. 验证：
+   - `scripts/smoke_loco_loopback.py`
+   - 手工双终端联调（bridge + `scripts/run.py --profile sim2real_g1_loopback.yaml`）
 
 ## 真机最小切换
 
 - 不改策略配置、不改 topic
 - 仅切换：
-  - `communication.interface: lo -> enp2s0`（示例）
-  - `domain_id` 按现场 DDS 设置
+  - `backend.interface: lo -> enp2s0`（示例）
+  - `backend.domain_id` 按现场 DDS 设置
 
 ## 高频坑位
 
@@ -63,10 +66,24 @@ description: Use when implementing or debugging Unitree G1 sim2real communicatio
    - G1 SDK DDS 重点是 interface/domain/topic；
    - 不是“只改 IP”。
 
+4. **初始化姿态假对齐（看起来像“吊起了”，实际脚仍承重）**  
+   - 先算力学：`F_band = k * (||point-root|| - length)`；若 `F_band < mg`，机器人必然贴地。  
+   - G1 在本仓默认参数下，`point.z=2.5` 会导致约 `339N`，低于重力（约 `343N`），无法真正悬空。  
+   - 与 ASAP 对齐使用 `point=[0,0,3.0]`，并从 XML `qpos0` 起步（不要强注入 standing pose），让四肢在重力下自然下垂。
+
+5. **`i`/`]` 抖动与“乱飞”根因常在控制带宽，而非策略本身**  
+   - 高危信号：`INIT` 期间也抖；`loco` 激活后振荡放大。  
+   - 常见根因：PD 只在 DDS callback（~50Hz）更新，物理却在 200Hz 跑，导致 `ctrl` 跨 4 个 substep 冻结。  
+   - 正确做法：每个 `mj_step` 用最新 `q,dq` 重算  
+     `tau = kp*(q_ref-q) + kd*(dq_ref-dq) + tau_ff`，并按 `actuator_ctrlrange` 限幅（与 ASAP / sim2sim 一致）。  
+   - 额外注意：按 `]` 时若上肢目标从 0 突跳到 loco reference（如 elbow 0→1rad），会触发饱和；需做 1~2s 插值过渡。
+
 ## 验证清单
 
 - [ ] `sim2real` profile 在 `mock=true` 能跑主循环
-- [ ] `selftest_real.py` 全通过
+- [ ] `i` 阶段无明显抖动（INIT 插值可复现）
+- [ ] `]` 阶段无突跳（上肢过渡插值生效）
+- [ ] bridge 诊断输出包含 root pose + 全关节 q/qdot
 - [ ] 断流/旧帧重复能触发预期 timeout 行为
 - [ ] loopback 到真机仅改网卡与 domain 即可运行
 
