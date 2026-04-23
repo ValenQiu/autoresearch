@@ -54,6 +54,43 @@
 | P5 loco 闭环 + Gate C | 🚧 待开始 | `sim2real_g1_loco` 先 loopback smoke，再真机 |
 | P6 Gate D 差分审查 | 🚧 待开始 | 对 archive/main-m3-attempt1 和 attempt2 做形式化差分 → 决定哪些设计可挽救 |
 
+## 0.3 架构决策（2026-04-23 审查后拍板）
+
+在进入 P2 之前，基于三方参考实现（ASAP / BeyondMimic / RoboJuDo）+ 官方 `unitreerobotics/unitree_mujoco` 调研，拍板两项**全局约束**：
+
+### DP1 · RobotCmd 契约策略 = **渐进升级（B 方案）**
+
+**证据**：`HybridRobotics/motion_tracking_controller` C++ 源码（`MotionOnnxPolicy::forward`）确认 ONNX 输出只含 `actions + joint_pos + joint_vel + body_pos_w + body_quat_w + body_{lin,ang}_vel_w`，**无 tau_ff / 无 dq_ref**；kp/kd 由静态 yaml 配置。UHC 当前 4 类策略（loco / ASAP-mimic / BeyondMimic / OmniXtreme）下发 `(q_target, kp, kd)` 已完备。
+
+**落地**：
+- P3 升级时**保留**现有 `HardwareBackend.write_action(q_target, kp, kd)` API（不加 deprecation）
+- **新增**可选 `write_cmd(RobotCmd)` 完整接口；`RobotCmd` 字段 = `q, dq, kp, kd, tau_ff, mode_pr, level_flag, seq`
+- backend 实现把 `write_cmd` 作为**权威入口**；`write_action` 作为薄兼容垫片
+- `RobotState` 强制新增 `tick / timestamp_ns / lin_acc`；`body_xpos / body_xquat / body_xmat` 从公共接口下沉到 `MujocoBackend.get_body_frame(name)` 扩展 API
+- `BeyondMimicPolicy._compute_world_to_init` 分两路：sim 走 `get_body_frame(anchor)`，real 走 `pelvis IMU + URDF 前向运动学`（DP2 中已拍板 A 方案）
+
+### DP3 · Loopback Bridge 实现方式 = **官方 `unitreerobotics/unitree_mujoco` submodule（E 方案，新增选项）**
+
+**证据**：
+- [`unitreerobotics/unitree_mujoco`](https://github.com/unitreerobotics/unitree_mujoco)（908⭐ 官方）提供完整的 `DDS ↔ MuJoCo` bridge，C++ / Python 双版本
+- G1 需用 `unitree_hg` IDL（Go2 用 `unitree_go`），[`lerobot/unitree-g1-mujoco`](https://huggingface.co/lerobot/unitree-g1-mujoco/blob/main/sim/unitree_sdk2py_bridge.py) 已完成 G1 适配（elastic band + joystick + unitree_hg）
+- 官方约定：`ChannelFactoryInitialize(1, "lo")` = sim（domain=1）；`ChannelFactoryInitialize(0, "enp2s0")` = real（domain=0）——ASAP / RoboJuDo / UHC 共用此约定
+- UHC 自己写 bridge 的风险：DDS IDL 代码需维护、官方升级需跟踪、语义与真机 drift 风险
+
+**落地**：
+- `third_party/unitree_mujoco/` 作为 git submodule 引入（UHC 仓库）
+- `tools/loopback_bridge/`（UHC）只负责：
+  - `uhc_g1_bridge.yaml`：UHC 专用 G1 配置（选 `hg` IDL、`domain_id=1`、`interface=lo`、scene XML 指向 UHC 自己的 g1_29dof 场景）
+  - `run_g1_bridge.sh`：包装脚本 `python third_party/unitree_mujoco/simulate_python/unitree_mujoco.py --config ...`
+- UHC `uhc/backends/unitree_backend.py` 只做 DDS **客户端**（订阅 `rt/lowstate` / 发布 `rt/lowcmd`），**不实现 bridge server 侧**
+- 故障注入 / 域随机化作为 **P4+ 或 M4** 的"超越目标"——短期不 patch bridge，用 bridge 原生功能（如果有）或 MuJoCo XML 层的 `<geom friction="...">`、`<default>` 改模型参数
+
+### DP2 · BeyondMimic worldToInit 真机方案 = **URDF FK 近似（A 方案）**
+
+真机用 `pelvis IMU quat + joint_pos` 做 URDF 前向运动学估计 anchor body 的世界位姿。预期在 `init` 瞬间一次性对齐，之后 tracking 靠相对量。工具链候选：`pin`（Pinocchio）/ `robot_descriptions.py` / 手搓 FK 链（29DoF 手写代价可控）。具体库在 P3.3 决定。
+
+---
+
 ## 1. 目标
 
 在不依赖旧 loopback 实现细节的前提下，重新构建并验收如下链路：

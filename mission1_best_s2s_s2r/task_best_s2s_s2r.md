@@ -292,12 +292,17 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 **项目级重置（2026-04-23）**：原 M3 两次 attempt（`main` 与 `sim2real_debug`）均判定不可接受 → 全部 tag 归档（`archive/main-m3-attempt1@e1c664a`、`archive/sim2real-debug-m3-attempt2@0a661b6`），不参与当前开发。详见 `m3_sim2real.md` §0.2 与 `.archive/main_m3/README.md`。
 
 **重建原则**（强制）：
-- 仅保留 wandb 预下载工具（`tools/wandb_model_download/download_wandb_onnx.py`，UHC `sim2real_redo` 上 `b791b1c`）+ profile 自动写回（`7a4f7ce`）
+- 仅保留 wandb 预下载工具（`tools/wandb_model_download/download_wandb_onnx.py`，UHC `sim2real_redo` 上 `b791b1c`）+ profile 自动写回（`7a4f7ce` / `d7b86cd`）
 - attempt1/attempt2 的实现细节不参与开发决策，仅在 P6 / Gate D 做差分审查参照
 - `unitree_sdk → mujoco` 语义严格对齐 ASAP（控制时序、字段语义、freshness 必须一致）
 - 急停仅按键（项目级约束），`PolicyRunner` 禁止新增自动 `E_STOP` 触发
 - selftest 必须走 `PolicyRunner` 同路径（`selftest-reality-alignment` skill）
 - 引入 teacher 对照（RoboJuDo）：统一适配层 + 切换管理器化 + 统一命令面 + 可观测性内建
+
+**架构决策（2026-04-23 P2 前拍板，详见 `m3_sim2real.md §0.3`）**：
+- **DP1 RobotCmd 契约** = 渐进升级：`write_action(q,kp,kd)` 保留作兼容，新增 `write_cmd(RobotCmd[q,dq,kp,kd,tau_ff,mode_pr,level_flag,seq])` 为权威入口；`RobotState` 必加 `tick/timestamp_ns/lin_acc`；`body_x*` 下沉为 `MujocoBackend.get_body_frame(name)` 扩展 API。
+- **DP2 BeyondMimic worldToInit 真机方案** = URDF FK 近似（pelvis IMU + joint_pos）。
+- **DP3 Loopback Bridge** = 官方 `unitreerobotics/unitree_mujoco` 作 `third_party/` submodule，UHC 只写 DDS 客户端侧（`UnitreeBackend`），不重新实现 bridge。故障注入 / 域随机化推迟到 P4+/M4 作为超越目标。
 
 **子阶段（P0~P6，全部在 `sim2real_redo` 分支上推进；与 `m3_sim2real.md` §M3.R0-R5 对应）**：
 
