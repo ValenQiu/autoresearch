@@ -103,54 +103,58 @@
     },
     {
       "id": "M3",
-      "name": "Sim2Real 推倒重来（M3-R）",
+      "name": "Sim2Real 推倒重来（项目级重置 @ 2026-04-23）",
       "scope": "loopback 重建 + 真机最小切换准备",
       "status": "in_progress",
+      "reset_decision": {
+        "date": "2026-04-23",
+        "rationale": "M3 两次 attempt 均不可接受：attempt1（main）接近完成但被顽固 bug 拖死；attempt2（sim2real_debug）重做后同样失败。两条分支打 tag 归档，除 wandb 工具外全部不复用。",
+        "archived_branches": [
+          {"branch": "main", "tag": "archive/main-m3-attempt1", "head": "e1c664a"},
+          {"branch": "sim2real_debug", "tag": "archive/sim2real-debug-m3-attempt2", "head": "0a661b6"}
+        ],
+        "archived_docs_dir": "mission1_best_s2s_s2r/.archive/main_m3/"
+      },
       "plan_doc": "m3_sim2real.md",
-      "acceptance_doc": "rebuild_m3_acceptance_matrix.md",
       "teacher_reference_doc": "research/robojudo_teacher_distilled.md",
       "base_commit_for_rebuild": "02e7e79e4b8d9a315dbb6c888af8774da54f1d0a",
-      "work_branch": "sim2real_debug",
-      "keep_commits_before_rebuild": [
-        "29efe68 (tools/wandb)",
-        "patch commit: fix dependencies for wandb download utility"
+      "work_branch": "sim2real_redo",
+      "kept_from_archive": [
+        "UHC tools/wandb_model_download/download_wandb_onnx.py（由 0135aef+9c1cb64 squash 为 sim2real_redo 上 b791b1c；无 model_path 自动从 wandb 预下载 ONNX 并更新 profile 路径的功能）"
       ],
       "rebuild_constraints": [
-        "不直接复用旧 loopback 实现细节",
+        "不直接复用旧 loopback 实现细节（attempt1/attempt2 仅作差分审查参照）",
         "unitree_sdk -> mujoco 语义严格对齐 ASAP",
-        "验收时必须做新旧实现差分审查，防灾难性逻辑变更",
-        "吸收 RoboJuDo 的模块化优点，但不突破本项目安全约束"
+        "急停仅按键 o，PolicyRunner 禁止新增自动 E_STOP 触发（项目级约束）",
+        "selftest 必须走 PolicyRunner 同路径（selftest-reality-alignment skill）",
+        "新策略接入先读 uhc-policy-adaptation skill；loopback/DDS 先读 unitree-g1-sdk-dds-mock skill"
       ],
       "sub_phases": [
-        "M3.R0 基线准备（新分支 + 迁移 29efe68 + 工具依赖修复）",
-        "M3.R1 ASAP 对齐矩阵冻结（topic/字段/时序/freshness/映射）",
-        "M3.R2 UnitreeBackend 深度 debug 与重构（先证据后实现）",
-        "M3.R3 bridge 全新实现（unitree_sdk->mujoco 严格对齐 ASAP）",
-        "M3.R4 sim2real_g1_loco 闭环恢复与稳定性验收",
-        "M3.R5 新旧实现差分审查 + 真机最小切换 checklist 固化"
+        "P0 anchor + wandb 工具移植（sim2real_redo 建立，wandb 工具 verified）— completed",
+        "P1 跨仓 skill 同步（UHC .cursor/skills/ 镜像 autoresearch 侧 4 个 UHC 相关 skill + 2 个新 skill）— completed",
+        "P2 对齐矩阵重冻（Gate A，不复用 rebuild_m3_acceptance_matrix.md）— pending",
+        "P3 UnitreeBackend 最小契约（selftest_real.py 重写走 PolicyRunner 同路径）— pending",
+        "P4 loopback bridge 重实现（先 headless smoke）— pending",
+        "P5 loco 闭环（Gate C：loopback smoke + 真机）— pending",
+        "P6 Gate D 差分审查（对 attempt1/attempt2 形式化审查，决定哪些设计可挽救）— pending"
       ],
       "gates": [
-        "Gate A: R1 对齐矩阵完整且无 TBD",
-        "Gate B: R3 后 loopback bridge/policyrunner smoke 全通过",
-        "Gate C: R4 后 loco 指标验收通过",
-        "Gate D: R5 后差分审查关闭高危项",
-        "Gate A+: 适配层边界与数据契约冻结（quat/order/cmd 语义）",
-        "Gate D+: 新旧行为差分报告产出并签字"
+        "Gate A: P2 对齐矩阵完整且无 TBD",
+        "Gate B: P4 后 loopback smoke（headless）通过",
+        "Gate C: P5 后 loco 指标验收通过（先 loopback 再真机）",
+        "Gate D: P6 后差分审查关闭高危项（包含 attempt1/attempt2 的教训总结）"
       ],
       "acceptance": [
-        "selftest_real.py 契约测试通过",
-        "selftest_loopback_bridge_smoke.py 通过",
-        "selftest_loopback_policy_runner_smoke.py 通过",
-        "sim2real_g1_loco: INIT/ACTIVATE/WALK/E_STOP 全流程稳定",
-        "新旧实现差分审查无高严重灾难性风险"
+        "wandb 预下载工具在 sim2real_redo 可用（已 verified 2026-04-23）",
+        "selftest_real.py（重写版）契约测试通过",
+        "loopback bridge + policy_runner smoke 通过",
+        "sim2real_g1_loco: INIT/ACTIVATE/WALK/E_STOP 全流程稳定（loopback + 真机）",
+        "差分审查产出可行/不可行设计清单，写回 mission1"
       ],
       "execution_progress": [
-        "P1 completed: sim2real_debug baseline branch + 29efe68 + wandb compatibility patch",
-        "P2 completed: UnitreeBackend alignment fixes + config extends merge + selftest_real 27/27",
-        "P3 completed: mock_unitree_mujoco_bridge + sim2real_g1_loopback(_smoke) + Gate B loopback smoke PASS",
-        "Gate C local automation completed: selftest_loopback_policy_runner_smoke.py --loco with sim2real_g1_loco_loopback.yaml PASS",
-        "Gate C real robot acceptance pending: sim2real_g1_loco INIT/ACTIVATE/WALK/E_STOP field validation",
-        "Gate D pending: main vs sim2real_debug differential review report and high-risk closure"
+        "P0 completed: sim2real_redo branch from 02e7e79; wandb tool ported + verified (dry-run + real 12MB ONNX download, onnxruntime loadable)",
+        "P1 completed: cross-repo skill sync (UHC mirror of autoresearch-house-rules, karpathy-coding-discipline, uhc-interpolation-debugging, selftest-reality-alignment, unitree-g1-sdk-dds-mock, unitree-g1-documentation-distilled; updated uhc-policy-adaptation)",
+        "P2-P6: pending"
       ]
     },
     {
