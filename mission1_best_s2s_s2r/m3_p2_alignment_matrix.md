@@ -1,7 +1,7 @@
 # M3.P2 · Sim2Real 语义对齐矩阵（Gate A 冻结文档）
 
 **范围**：UHC `sim2real_redo` 分支；Unitree G1 29DoF；`unitree_hg` IDL；CycloneDDS。
-**状态**：🚧 骨架（v0，2026-04-23）——填确定项；TBD 项由 P2.2-P2.4 证据补齐。
+**状态**：🟡 骨架 + loopback 段实证（v0.1，2026-04-23 更新）——§1 / §2 / §5 / §10 已随 `sim2real_redo` 落地同步；真机侧 TBD 由 P5 真机切换阶段补齐。
 **验收**：Gate A = 本矩阵所有 `status` 列 = `FROZEN`，人工 review 签字，无 TBD。
 
 ## 0. 如何读这张矩阵
@@ -26,7 +26,7 @@
 | C.1.3 | 回读 topic | n/a | `rt/lowstate` | `rt/lowstate` | 官方 | `scripts/check_real_env.py` | FROZEN |
 | C.1.4 | DDS domain | n/a | `1` (lo) | `0` (enp2s0) | 社区约定（ASAP/RoboJuDo/官方） | `profile.backend.domain_id` | FROZEN |
 | C.1.5 | 网卡 interface | n/a | `lo` | `enp2s0` / 现场 | 用户现场 | `profile.backend.interface` | FROZEN |
-| C.1.6 | state publish rate | n/a | ≥500 Hz（官方 bridge 默认 `SIMULATE_DT=0.005` = 200 Hz；需确认） | 500 Hz（真机） | 真机 | Observability 实测 | TBD / evidence 需要跑官方 bridge 确认 |
+| C.1.6 | state publish rate | n/a | 官方 bridge `PublishLowState` 绑 `RecurrentThread(interval=self.dt=mj_model.opt.timestep)`——每个物理步发一次。loopback：默认 G1 物理线 `simulate_dt=0.005` → **200 Hz**，OmniXtreme 物理线 `simulate_dt=0.004` → **250 Hz** | 500 Hz（真机） | 真机 ≥ loopback（cmd_rate 是 50 Hz，仅需 state 足够新） | `smoke_loco_loopback.py` DDS freshness（joint_pos 快照多样性） + `run_g1_bridge.py` 启动日志 `[run_g1_bridge] phys sim_dt=...` | FROZEN（loopback 侧） |
 | C.1.7 | cmd rate | ≤50 Hz（UHC `PolicyRunner` 主循环） | 50 Hz | 50 Hz | UHC / 策略训练配置 | Observability 实测 | FROZEN |
 
 ## 2. 命令语义（RobotCmd → LowCmd.motor_cmd[i]）
@@ -75,9 +75,12 @@
 | # | contract | sim | mock / real | source of truth | verify by | status |
 |---|---|---|---|---|---|---|
 | C.5.1 | 控制循环频率 | 50 Hz | 50 Hz | 策略训练约定 | `PolicyRunner.run()` | FROZEN |
-| C.5.2 | physics step | 200 Hz (`sim_dt=0.005`) | 200 Hz（官方 bridge 默认 `SIMULATE_DT=0.005`） | 官方 | `MujocoBackend.sim_dt` | FROZEN |
-| C.5.3 | state publish rate | — | **TBD**（官方 bridge 是否每 `sim_dt` 发一次？） | 官方 | Observability 实测 | TBD |
-| C.5.4 | cmd 消费策略 | 同步 write_cmd 立即 step | **latest command + per-substep PD recompute @200Hz**（不使用“50Hz callback 一次算 torque 后冻结 4 个 substep”的模式） | ASAP / UHC sim2sim 对齐 | `tools/loopback_bridge/run_g1_bridge.py` + `scripts/smoke_loco_loopback.py` | FROZEN |
+| C.5.2 | physics step | 200 Hz (`sim_dt=0.005`) / 250 Hz (`sim_dt=0.004`，OmniXtreme) | 同 sim（由 profile `backend.simulate_dt` 驱动，bridge `--profile` 自动取） | sim2sim profile（单一真相源） | `run_g1_bridge.py` 启动日志 + profile `backend.simulate_dt` | FROZEN |
+| C.5.3 | state publish rate | — | = `1/simulate_dt`（`PublishLowState` 绑 `RecurrentThread(interval=self.dt)`）；loopback 实测 200 Hz（默认 G1）/ 250 Hz（OmniXtreme） | 官方 bridge 代码 `unitree_sdk2py_bridge.py:63-66` | Observability（smoke DDS freshness 不报 stale）+ bridge 启动日志 | FROZEN |
+| C.5.4 | cmd 消费策略 | 同步 write_cmd 立即 step | **latest command + per-substep PD recompute @ physics rate**（每个 `mj_step` 之前用最新 LowCmd 重算 `tau = kp(q_ref-q) + kd(dq_ref-dq) + tau_ff`，不使用 "50 Hz DDS callback 算一次后冻结 N 个 substep" 的模式） | ASAP / UHC sim2sim 对齐 | `tools/loopback_bridge/run_g1_bridge.py::_compute_pd_torque` + `scripts/smoke_loco_loopback.py` | FROZEN |
+| C.5.5 | 物理基座单一真相源 | profile `backend.scene_xml + backend.simulate_dt` | 同（`run_g1_bridge.py --profile <yaml>` 自动派生；CLI flag 仍可覆写） | profile（由同名 sim2sim profile 锁定） | profile diff + bridge 启动日志 `[run_g1_bridge] profile-derived: scene=... dt=...` | FROZEN |
+| C.5.6 | motor 数据读取路径（loopback） | `MujocoBackend` 直读 `mj_data.qpos/qvel` | `UnitreeSdk2Bridge.PublishLowState` monkey-patch 后直读 `mj_data.qpos[7:] / qvel[6:] / actuator_force`（不依赖 87 个 motor sensor 存在，兼容 OmniXtreme XML 0 motor sensor 的情况） | `run_g1_bridge.py::_patch_unitree_bridge_for_uhc_xmls` | 双 XML 下 `smoke_loco_loopback.py` 均 PASS；bridge 启动日志 `[run_g1_bridge] sensor patch: imu offsets quat=... gyro=... accel=...` | FROZEN |
+| C.5.7 | IMU sensor 名兼容 | MuJoCo 原生 | 支持两类命名：默认 G1 `imu_quat/imu_gyro/imu_acc/frame_pos`；OmniXtreme `base_quat/base_gyro/base_accel/mid360_pos`。`run_g1_bridge` 扫描 `(name, dim)` 记录 offset，不依赖位置约定 | `run_g1_bridge.py::_patch_unitree_bridge_for_uhc_xmls` | bridge 启动日志 `sensor patch: imu offsets` 非 None | FROZEN |
 
 ## 6. BeyondMimic worldToInit（DP2 决策执行）
 
@@ -117,8 +120,25 @@
 
 ## 10. 调试复盘（2026-04-23）
 
-- INIT 抖动根因：bridge 在 DDS callback（50Hz）计算 PD，物理 200Hz 时 `ctrl` 冻结跨 4 个 substep，带宽不足导致高增益振荡。
-- 修复：bridge 改为每个 `mj_step` 重算 `tau = kp*(q_ref-q)+kd*(dq_ref-dq)+tau_ff`，并按 `actuator_ctrlrange` 限幅。
-- `]` 激活乱飞根因：上肢目标从 0 直接跳到 loco ref（elbow 约 1rad）导致饱和冲击。
-- 修复：`PolicyRunner` 在 `]` 时加入 1.5s 上肢插值过渡。
+### 10.1 loco 链路
+
+- INIT 抖动根因：bridge 在 DDS callback（50 Hz）计算 PD，物理 200 Hz 时 `ctrl` 冻结跨 4 个 substep，带宽不足导致高增益振荡。
+- 修复：bridge 改为每个 `mj_step` 之前重算 `tau = kp*(q_ref-q) + kd*(dq_ref-dq) + tau_ff`，并按 `actuator_ctrlrange` 限幅（见 C.5.4）。
+- `]` 激活乱飞根因：上肢目标从 0 直接跳到 loco ref（elbow 约 1 rad）导致饱和冲击。
+- 修复：`PolicyRunner` 在 `]` 时加入 1.5 s 上肢插值过渡。
 - 诊断标准固定：bridge 必须输出 root pose + 全关节 q/qdot；先 bridge 单跑，再 INIT，再激活 loco，最后放绳。
+
+### 10.2 BFM-Zero `n/p/t` 切目标「到不了」
+
+- 根因：`PolicyRunner._handle_event(ACTIVATE_TASK)` 无条件对所有 base policy 启动 1.5 s 上半身插值并在其后 1 s 静默窗口覆写 `q_target[upper:]`。对 loco（仅控下肢）是安全特性；对 BFM-Zero 这类 whole-body 控制器则把策略 17 维上半身命令吞掉 ~2.5 s，`n/p/t` 在窗口内无效。
+- 修复：`BasePolicy.is_whole_body_controller() -> bool`，`BFMZeroPolicy` 覆写 `True`；`PolicyRunner.ACTIVATE_TASK` 检测到 whole-body 时跳过 `_start_upper_interp`，立即把 29 维 `q_target` 全权交给 base_policy。
+- 验收：BFM-CR7 smoke `--cycle-key t` `cycle_response_ratio` 从 0.838 → 0.983（UHC commit `aaefdaa`）。
+
+### 10.3 BFM-Zero `fallAndGetUp` 手臂抖动
+
+- 症状：`sim2sim_bfm_zero_all.yaml` 下 `n p` 切到 `fallAndGetUp1_subject4_2193` 能正常起身；`sim2real_redo` loopback 下同命令上半身抖动无法维持。
+- 排查路径：确认 `PolicyRunner` 类两条路径完全一致（`uhc/core/policy_runner.py`）；robot config 差异（`g1_29dof.yaml` vs `g1_29dof_real.yaml`）仅 `motor_mapping + safety` 叠加，不影响动力学。
+- 根因：MuJoCo 物理基座不一致——sim2sim 用 OmniXtreme `scene_xml + simulate_dt=0.004 (250 Hz)`（BFM-Zero 训练基座），sim2real_redo bridge 默认用 `scene_29dof.xml + 0.005 (200 Hz)`。对高动态 + 强接触的 fallAndGetUp 动作，基座不同即失稳。
+- 修复：引入 C.5.5「物理基座单一真相源」契约——`run_g1_bridge.py --profile <yaml>` 从 `backend.scene_xml + backend.simulate_dt` 派生；`sim2real_g1_loopback_bfm_*.yaml` 显式写 OmniXtreme 物理参数。
+- 伴随修复：OmniXtreme XML 只有 5 个 IMU sensor、0 个 motor sensor，触发 `UnitreeSdk2Bridge.PublishLowState` `IndexError: index 29 is out of bounds for axis 0 with size 17`，且 IMU 命名 `base_quat/base_gyro/base_accel` 不被识别 → `have_frame_sensor_=False` → IMU 恒零。通过 C.5.6/C.5.7 两条契约的 monkey-patch 修复（不动 submodule）。
+- 验收：BFM-CR7 loopback smoke `response_ratio=0.927`、`tracking_bias=0.0196 rad` PASS；BFM-Zero `fallAndGetUp` 系列动作人工复测通过；loco 默认 G1 物理线回归未退化（UHC commit `725e58a`）。

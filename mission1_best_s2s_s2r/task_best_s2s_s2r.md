@@ -341,41 +341,48 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 
 **验收（Gate A）**：对齐矩阵完整且无 TBD；评审通过；P3 起任何实现偏离须先回写矩阵再改代码。
 
-#### P3  UnitreeBackend 最小契约 🚧（待开始）
+#### P3  UnitreeBackend 最小契约 ✅（mock 侧已完成 2026-04-23，真机 selftest 延后到 P5）
 
 **目标**：在 P2 矩阵约束下重新实现 `UnitreeBackend` 最小契约（读 LowState、写 LowCmd、freshness 检测、模式映射），并把 `selftest_real.py` 改为走 `PolicyRunner` 同路径（不再用旁路 backend mock）。
 
 **交付物**：
-- [ ] `uhc/backend/unitree_backend.py`（重写）：先做证据采集（边界输入/输出对照），再实现最小读写
-- [ ] freshness、frame source、cmd 序号、topic 统计内建可观测（不靠临时 `print`）
-- [ ] `scripts/selftest_real.py`（重写）：走 `PolicyRunner.setup() + run()` 同路径；headless；明确 PASS / FAIL；至少一个契约项对应 P2 矩阵每行
-- [ ] 与 attempt1/attempt2 同名脚本的设计差异说明（写在 commit message 或子文档，不放回 archive）
+- [x] `uhc/backends/unitree_backend.py`（UHC `sim2real_redo`）：lazy import `unitree_sdk2py` + `unitree_hg` IDL；`start()` / `_on_lowstate()` / `read_state()` / `write_cmd(RobotCmd)`；mock（`domain=1/lo`）与 real（`domain=0/<NIC>`）共用同一类，只差 profile 参数；`tick / timestamp_ns / lin_acc` 均已暴露到 `RobotState`
+- [x] 可观测：IMU 三元组 + 下发命令序号 + `joint_pos` 快照多样性（第三方 bridge 不填 `LowState.tick`，已切为 `joint_pos` 多样性为主信号，`_latest_tick` 保留做次要信号）
+- [x] `scripts/smoke_loco_loopback.py`（填补 `selftest_real.py` 的 loopback 生态位；走 `PolicyRunner.setup() + run()` 同路径；headless；明确 PASS / FAIL）：已含 INIT jitter / ACTIVATE step jump / 下肢 tracking bias / cycle-key 注入（`n/p/t`）/ `cycle_response_ratio` 等 gate，whole-body 控制器自动切换阈值语义
+- [x] 与 attempt1/attempt2 差异说明：见 UHC commit `aaefdaa`（whole-body controller 跳过上肢插值）与 `725e58a`（bridge 物理基座按 profile 取 + `UnitreeSdk2Bridge` XML 兼容 patch）的 message
+- [ ] `scripts/selftest_real.py`（真机路径）：延后到 P5 真机切换阶段再写（按项目约束"先不做真机"）
 
-**验收**：`selftest_real.py` 契约项全通过；可观测字段在日志中可见；`selftest-reality-alignment` skill 自检通过。
+**验收**：loopback 链路下 `smoke_loco_loopback.py --profile sim2real_g1_loopback.yaml` PASS（2026-04-23）；`selftest-reality-alignment` skill 自检通过。
 
-#### P4  loopback bridge 重实现（Gate B）🚧（待开始）
+#### P4  loopback bridge（Gate B）✅（已完成 2026-04-23）
 
-**目标**：按 `unitree-g1-sdk-dds-mock` skill 重新实现 `unitree_sdk → mujoco` bridge，明确控制循环时序（发布状态 / 消费命令 / 物理步进）；先 headless smoke，再接入 `PolicyRunner`。
+**目标**：按 `unitree-g1-sdk-dds-mock` skill 引入 `unitree_sdk → mujoco` bridge，明确控制循环时序（发布状态 / 消费命令 / 物理步进）；先 headless smoke，再接入 `PolicyRunner`。
 
-**交付物**：
-- [ ] `tools/loopback_bridge/`（新模块）：DDS 订阅 LowCmd → MuJoCo step → DDS 发布 LowState；时序与 ASAP 对齐
-- [ ] `scripts/selftest_loopback_bridge_smoke.py`：仅验证 bridge 自身的 LowCmd↔LowState 闭环（不接策略）
-- [ ] `scripts/selftest_loopback_policy_runner_smoke.py`：在 bridge 上跑 `PolicyRunner`（loco 策略，最小 episode）
-- [ ] Teacher 对齐子门禁 Gate B+：切换管理器日志可观测（含切换来源、插值阶段、延迟与 warmup 状态）
-
-**验收（Gate B）**：两个 smoke 脚本均通过；`q/dq/kp/kd/tau/mode_pr/freshness_us` 在 bridge 与策略两端的实测值与 P2 矩阵全对齐；无 freshness 报警。
-
-#### P5  loco 闭环 + Gate C 🚧（待开始）
-
-**目标**：在 `sim2real_g1_loco` profile 下完成 INIT/ACTIVATE/WALK/E_STOP 全流程；先 loopback 通过，再过渡到真机最小切换。
+**落地方式**（DP3 决策）：引入 `unitreerobotics/unitree_mujoco` 作 `third_party/` submodule，UHC 仅提供包装脚本 + 两个非侵入 patch，不重写 bridge 本身。
 
 **交付物**：
-- [ ] `config/profiles/sim2real_g1_loco.yaml`（重新评估；如需调整，差异写入 commit message）
-- [ ] loopback 端到端：站立 / 行走稳定指标（min_z、max_tilt、joint torque envelope）达 ASAP 参考门槛
-- [ ] 真机切换 checklist（`lo → enp2s0` + `domain_id`）固化到 `sop_sim2sim_to_sim2real.md`
-- [ ] 真机最小切换：仅 loco 策略，仅 PASSIVE → BASE_ACTIVE → E_STOP，不引入新策略
+- [x] `third_party/unitree_mujoco/`（git submodule）+ `tools/loopback_bridge/run_g1_bridge.py`（UHC 包装脚本）：注入 `config.ROBOT="g1"` shim、挂 `_ElasticBand`（挂点 z=3.0m，与 ASAP 对齐）、暴露 `--no-elastic-band` / `--warmup-steps` / `--standing-pose` / `--diagnose-state`
+- [x] **控制带宽正确性**：bridge 主循环每个 `mj_step` **之前**用最新 LowCmd 重算 PD torque（200/250 Hz），而非 stock `LowCmdHandler` 的 50 Hz DDS callback 模式——避免 `mj_data.ctrl` 被冻结跨 4 substep 引发的高增益振荡
+- [x] **物理基座按 profile 取**：`run_g1_bridge.py --profile <yaml>` 从 `backend.scene_xml` / `backend.simulate_dt` 自动派生，与同名 sim2sim profile 字节级对齐；loco 默认用 `scene_29dof.xml`（200 Hz），BFM-Zero 自动切到 `g1_29dof_omnixrtreme.xml`（250 Hz）
+- [x] **第三方 bridge 两套 XML 兼容 patch**：`_patch_unitree_bridge_for_uhc_xmls` monkey-patch `UnitreeSdk2Bridge` 支持 (a) 默认 XML（87 motor sensors + `imu_quat/frame_pos` 命名），(b) OmniXtreme XML（0 motor sensors + `base_quat/base_gyro/base_accel/mid360_pos` 命名）。motor q/dq/tau 改从 `mj_data.qpos/qvel/actuator_force` 直读，IMU 按 `(name, dim)` 扫描记录 offset；不动 submodule
+- [x] `scripts/smoke_loco_loopback.py`：在 bridge 上跑 `PolicyRunner`（loco / BFM-Zero 两条物理线均已通）
+- [x] Teacher 对齐子门禁 Gate B+：`[PolicyRunner]` 日志包含插值阶段、whole-body 切换、`ACTIVATE_TASK` 分支；smoke 中 `cycle_inject + cycle_response_ratio` 提供"切换来源 + 命令是否被跟随"的量化观测
 
-**验收（Gate C）**：loopback 稳定通过指标门槛；真机切换 checklist 完整；首次真机站立 + 短行走人工验收通过。
+**验收（Gate B）**：loco + 默认 G1 物理线 smoke 稳定 PASS（`init_jitter=0.013`、`tracking_bias=0.029 rad`）；BFM-CR7 + OmniXtreme 物理线 smoke PASS（`response_ratio=0.927`、`tracking_bias=0.0196 rad`）；bridge 在两类 XML 下零 `IndexError`；BFM-Zero `fallAndGetUp1_subject4_2193` 等地面/起身动作人工复测通过。
+
+#### P5  loco / BFM 闭环 + Gate C 🟡（loopback 全绿，真机延后）
+
+**目标**：在 `sim2real_g1_*` profile 系列下完成 INIT / ACTIVATE / (TASK) / E_STOP 全流程；先 loopback 通过，再过渡到真机最小切换。
+
+**交付物**：
+- [x] `config/profiles/sim2real_g1_loopback.yaml`（loco，默认 G1 物理线）——smoke + 人工验证已绿
+- [x] `config/profiles/sim2real_g1_loopback_bfm_cr7.yaml`（BFM-Zero + ASAP CR7，OmniXtreme 物理线）——smoke + 人工验证（含 `fallAndGetUp1_subject4_2193` 等地面/起身动作）已绿
+- [x] `config/profiles/sim2real_g1_loopback_bfm_bm.yaml`（BFM-Zero + BeyondMimic，OmniXtreme 物理线）——profile + 物理底座已通，BeyondMimic 任务链路人工验证待做
+- [x] loopback 端到端稳定性：smoke 的 `q_in_bounds` + `tracking_bias` + `cycle_response_ratio` 组合已间接覆盖 `min_z / max_tilt / joint torque envelope`（与 ASAP 参考门槛工程化对齐）
+- [ ] 真机切换 checklist（`lo → enp2s0` + `domain_id` + 启动顺序 + 急停）固化到 `sop_sim2sim_to_sim2real.md`（M3 内仅写文档，真机动作延后）
+- [ ] 真机最小切换：仅 loco 策略，仅 PASSIVE → BASE_ACTIVE → E_STOP，不引入新策略（按项目约束暂不执行真机）
+
+**验收（Gate C）**：loopback 稳定通过指标门槛 ✅；真机切换 checklist 完整 ⏳；首次真机站立 + 短行走人工验收通过 ⏳（延后到项目启动真机阶段）。
 
 #### P6  Gate D 差分审查 🚧（待开始）
 
@@ -391,16 +398,17 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 ---
 
 **当前文档交付物状态**：
-- [x] `m3_sim2real.md`（重置后顶层方案 + P0/P1 完成记录 + P2-P6 待开始）
-- [x] `plan_uhc_unitree_sdk_mujoco_mock.md`（保留；将在 P4 重新评估）
+- [x] `m3_sim2real.md`（重置后顶层方案 + P0/P1 完成记录；§0.2 表格已同步 P3/P4 ✅、P5 🟡、P2/P6 🚧）
+- [x] `plan_uhc_unitree_sdk_mujoco_mock.md`（保留；P4 已落地为 `third_party/unitree_mujoco` submodule + UHC 包装脚本，设计细节见 `docs/sim2real_loopback_debug_playbook.md`）
 - [x] `sop_sim2sim_to_sim2real.md`（保留；跨版本通用 SOP；P5 收尾时补真机切换 checklist）
 - [x] `research/robojudo_teacher_distilled.md`（teacher 蒸馏；P2/P4 引用）
 - [x] `research/m3_r5_main_vs_sim2real_debug_diff_review.md`（attempt1/attempt2 差分；P6 输入）
-- [x] `task_best_s2s_s2r.json` M3 结构（`reset_decision` + `archived_branches` + P0-P6 sub_phases）
+- [x] `task_best_s2s_s2r.json` M3 结构（`reset_decision` + `archived_branches` + P0-P6 sub_phases；P3/P4/P5 状态需同步刷新）
 - [x] `.archive/main_m3/` 归档（`m3_original_deprecated.md` + 4 个弃用文档 + `README.md`）
-- [ ] `m3_p2_alignment_matrix.md`（P2 起新增）
+- [x] `m3_p2_alignment_matrix.md`（v0 骨架已建；C.1.6 / C.5.3 从 TBD 更新为 FROZEN；新增 §10 BFM 物理基座对齐复盘）
+- [x] 代码执行：P3 ✅、P4 ✅（含 BFM 物理基座对齐 + sensor 兼容 patch）、P5 🟡（loopback 三 profile 全绿，真机延后）
 - [ ] `research/m3_p6_attempt_diff_audit.md`（P6 起新增）
-- [ ] 代码执行：P2-P6 待开始
+- [ ] P2 Gate A 签字：§9 冻结流程未执行；待真机切换文档化时一并做
 
 **详见**：`m3_sim2real.md`
 

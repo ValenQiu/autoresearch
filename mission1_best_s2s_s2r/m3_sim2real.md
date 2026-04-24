@@ -48,11 +48,11 @@
 |------|------|------|
 | P0 anchor + wandb 工具 | ✅ 已完成 | UHC `b791b1c`：`tools/wandb_model_download/download_wandb_onnx.py` 移植通过（`--dry-run` + 实跑下载 beyondmimic ONNX 12MB + onnxruntime 加载验收） |
 | P1 跨仓 skill 同步 | ✅ 已完成 | UHC `.cursor/skills/`：`uhc-policy-adaptation`（更新）+ `selftest-reality-alignment`、`uhc-interpolation-debugging`、`unitree-g1-sdk-dds-mock`、`unitree-g1-documentation-distilled`、`karpathy-coding-discipline`、`autoresearch-house-rules`（新增） |
-| P2 对齐矩阵（Gate A） | 🚧 待开始 | 重新冻结 ASAP 语义对齐矩阵；不复用 `rebuild_m3_acceptance_matrix.md`（已归档） |
-| P3 UnitreeBackend 最小契约 | 🚧 待开始 | 按新对齐矩阵重新实现；`selftest_real.py` 重写，走 `PolicyRunner` 同路径（`selftest-reality-alignment` skill） |
-| P4 loopback bridge | 🚧 待开始 | 按 `unitree-g1-sdk-dds-mock` skill 重新实现 mock bridge；先 headless smoke |
-| P5 loco 闭环 + Gate C | 🚧 待开始 | `sim2real_g1_loco` 先 loopback smoke，再真机 |
-| P6 Gate D 差分审查 | 🚧 待开始 | 对 archive/main-m3-attempt1 和 attempt2 做形式化差分 → 决定哪些设计可挽救 |
+| P2 对齐矩阵（Gate A） | 🟡 骨架化 | `m3_p2_alignment_matrix.md` v0 已成型；C.1.6 / C.5.3 已从 TBD 升级为 FROZEN（实测 bridge 每 `sim_dt` 发一次，G1 默认 200 Hz / OmniXtreme 250 Hz）；签字流程待真机 SOP 收尾时一并执行 |
+| P3 UnitreeBackend 最小契约 | ✅ mock 侧已完成 | `uhc/backends/unitree_backend.py` 在 `sim2real_redo` 落地；mock（`domain=1/lo`）链路在 `scripts/smoke_loco_loopback.py` 全绿；`selftest_real.py` 真机路径延后到 P5 |
+| P4 loopback bridge | ✅ 已完成 | DP3 落地：`third_party/unitree_mujoco` submodule + `tools/loopback_bridge/run_g1_bridge.py` 包装；200/250 Hz per-`mj_step` PD 重算；`--profile` 自动取物理基座；`UnitreeSdk2Bridge` XML 兼容 patch（默认 G1 + OmniXtreme 双支持） |
+| P5 loco / BFM 闭环 + Gate C | 🟡 loopback 全绿 / 真机延后 | 三 profile（loco / BFM+CR7 / BFM+BeyondMimic）物理底座已 PASS；真机切换 checklist 待写入 `sop_sim2sim_to_sim2real.md`；按项目约束真机动作延后 |
+| P6 Gate D 差分审查 | 🚧 待开始 | 对 `archive/main-m3-attempt1` 和 `attempt2` 做形式化差分 → 决定哪些设计可挽救 |
 
 ## 0.3 架构决策（2026-04-23 审查后拍板）
 

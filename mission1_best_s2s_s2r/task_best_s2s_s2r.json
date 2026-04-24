@@ -132,10 +132,10 @@
       "sub_phases": [
         "P0 anchor + wandb 工具移植（sim2real_redo 建立，wandb 工具 verified）— completed",
         "P1 跨仓 skill 同步（UHC .cursor/skills/ 镜像 autoresearch 侧 4 个 UHC 相关 skill + 2 个新 skill）— completed",
-        "P2 对齐矩阵重冻（Gate A，不复用 rebuild_m3_acceptance_matrix.md）— pending",
-        "P3 UnitreeBackend 最小契约（selftest_real.py 重写走 PolicyRunner 同路径）— pending",
-        "P4 loopback bridge 重实现（先 headless smoke）— pending",
-        "P5 loco 闭环（Gate C：loopback smoke + 真机）— pending",
+        "P2 对齐矩阵重冻（Gate A，不复用 rebuild_m3_acceptance_matrix.md）— skeleton (v0.1; §1/§2/§5/§10 synced; real-side rows TBD until P5 真机)",
+        "P3 UnitreeBackend 最小契约（mock 侧 via smoke_loco_loopback.py；真机 selftest_real.py 延后到 P5）— mock_completed",
+        "P4 loopback bridge（third_party/unitree_mujoco submodule + run_g1_bridge.py + physics base per-profile + UnitreeSdk2Bridge XML 兼容 patch）— completed",
+        "P5 loco / BFM 闭环（Gate C：loopback smoke 三 profile 全绿；真机切换 checklist 待固化；真机动作延后）— loopback_completed",
         "P6 Gate D 差分审查（对 attempt1/attempt2 形式化审查，决定哪些设计可挽救）— pending"
       ],
       "gates": [
@@ -154,7 +154,11 @@
       "execution_progress": [
         "P0 completed: sim2real_redo branch from 02e7e79; wandb tool ported + verified (dry-run + real 12MB ONNX download, onnxruntime loadable)",
         "P1 completed: cross-repo skill sync (UHC mirror of autoresearch-house-rules, karpathy-coding-discipline, uhc-interpolation-debugging, selftest-reality-alignment, unitree-g1-sdk-dds-mock, unitree-g1-documentation-distilled; updated uhc-policy-adaptation)",
-        "P2-P6: pending"
+        "P2 skeleton (v0.1, 2026-04-23): m3_p2_alignment_matrix.md §1/§2/§5/§10 synced with sim2real_redo reality; C.1.6/C.5.3 FROZEN (bridge publishes LowState every mj_step => 200Hz/250Hz); added C.5.5 physics-base single source of truth, C.5.6 motor data path, C.5.7 IMU sensor name aliasing; Gate A sign-off pending real-side TBDs",
+        "P3 mock_completed (2026-04-23): uhc/backends/unitree_backend.py with lazy unitree_sdk2py + unitree_hg IDL; RobotState exposes tick/timestamp_ns/lin_acc; scripts/smoke_loco_loopback.py is the loopback selftest path (PolicyRunner.setup()+run(), headless, PASS/FAIL, INIT jitter + ACTIVATE step-jump + tracking-bias + cycle-key injection gates, whole-body-aware threshold semantics); selftest_real.py deferred to P5",
+        "P4 completed (2026-04-23): third_party/unitree_mujoco submodule + tools/loopback_bridge/run_g1_bridge.py; per-mj_step PD recompute at physics rate (200/250Hz, not 50Hz DDS callback); --profile <yaml> auto-derives scene_xml/simulate_dt; _patch_unitree_bridge_for_uhc_xmls monkey-patches UnitreeSdk2Bridge so it works with both default G1 XML (87 motor sensors + imu_quat/frame_pos) and OmniXtreme XML (0 motor sensors + base_quat/base_gyro/base_accel/mid360_pos); elastic band z=3.0m aligned with ASAP",
+        "P5 loopback_completed (2026-04-23): three profiles green — sim2real_g1_loopback.yaml (loco, default G1 physics), sim2real_g1_loopback_bfm_cr7.yaml (BFM-Zero + ASAP CR7, OmniXtreme physics, manual fallAndGetUp passed), sim2real_g1_loopback_bfm_bm.yaml (BFM-Zero + BeyondMimic, physics base green, task-side manual validation TODO); real-machine checklist to be fixed into sop_sim2sim_to_sim2real.md; real-hardware execution deferred per project constraint",
+        "P6: pending"
       ]
     },
     {
