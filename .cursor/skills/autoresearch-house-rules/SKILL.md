@@ -41,6 +41,7 @@ GitHub 入口（从 UHC 镜像加载、相对路径不通时使用）：<https:/
 | 通用编码纪律（每次 coding 任务） | `karpathy-coding-discipline` | `CLAUDE.md` 顶部 |
 | 写 / 改 `scripts/selftest.py` 或 集成测试 | `selftest-reality-alignment` | `DEVELOPMENT_RULES.md` §1 |
 | 新 ONNX 策略接入 UHC / deploy_* 对齐 / sim2sim 不稳定 | `uhc-policy-adaptation` | `AGENTS.md` §UHC；`DEVELOPMENT_RULES.md` §「适配新网络时的对齐清单」 |
+| whole-body tracker（BM/ASAP/OmniXtreme/ProtoMotions/...）接入 / loopback 摔倒 / "RoboJuDo 能做为什么我们不能" | `robojudo-policy-adaptation` | `research/robojudo_teacher_distilled.md` |
 | base↔task 插值期腰部跳变 / 前倾 | `uhc-interpolation-debugging` | `mission1_best_s2s_s2r/README.md` |
 | sim2real LowCmd/LowState DDS、loopback mock、`lo→enp2s0` 切换 | `unitree-g1-sdk-dds-mock` | UHC `sim2real_redo` 分支开发约定 |
 | G1 真机启动 / 安全 / SDK DDS 集成 / 低层控制 | `unitree-g1-documentation-distilled` | UHC `sim2real_redo` 分支开发约定 |
@@ -49,6 +50,22 @@ GitHub 入口（从 UHC 镜像加载、相对路径不通时使用）：<https:/
 | 遇 bug / 意外行为 | `superpowers-systematic-debugging` | `superpowers_workflow.md` |
 | 声称"完成 / 修好 / pass"前 | `superpowers-verification-before-completion` | `CLAUDE.md` §4 Goal-Driven |
 | 写 / 改 skill 本身 | `superpowers-writing-skills` | `AGENTS.md` |
+
+## UHC 仓库快速上下文入口（节省 token）
+
+**不要在对话开头全量读大文件。按下表选最小需要读取的内容：**
+
+| 你要做什么 | 只读这个 |
+|-----------|---------|
+| 了解当前开发状态 / 未解问题 | `DEVELOPMENT_STATUS.md`（UHC 根目录，< 60 行） |
+| Omni 切换失稳 debug | `scripts/debug_omni_handover.py`（独立，< 15s 运行） |
+| PolicyRunner task 切换流程 | `uhc/core/policy_runner.py:407-480` |
+| Omni policy 首帧对齐 / reset | `uhc/policies/omnixrtreme.py:363-515` |
+| Omni 配置参数 | `config/policies/omnixrtreme.yaml`（88 行） |
+| 全量验收（确认无回归） | `python scripts/selftest.py`（完整 11 项，3-5 分钟） |
+| 排障历史 / 背景 | `docs/sim2real_loopback_debug_playbook.md`（仅在确实需要时） |
+
+**对话开始时禁止做：** 全量读 `selftest.py`（1300+ 行）、`policy_runner.py`（825 行）、`omnixrtreme.py`（1100+ 行）、或 playbook；它们拖慢推理且 99% 的信息在当前任务中无用。
 
 ## 硬性红线（违反即停）
 
