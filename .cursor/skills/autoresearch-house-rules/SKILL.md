@@ -67,6 +67,17 @@ GitHub 入口（从 UHC 镜像加载、相对路径不通时使用）：<https:/
 
 **对话开始时禁止做：** 全量读 `selftest.py`（1300+ 行）、`policy_runner.py`（825 行）、`omnixrtreme.py`（1100+ 行）、或 playbook；它们拖慢推理且 99% 的信息在当前任务中无用。
 
+### 最小 token 的会话开场公式
+
+```
+背景：UHC sim2real_redo 分支。
+本次目标：[一句话]
+check.sh 输出：[粘贴 < 30 行输出]
+请：[一个具体操作]
+```
+
+**每次会话只做一件事**（修参数 / 跑测试 / 写文档 = 三件事分三次会话）。多目标 = 长摘要 = 下次开销翻倍。
+
 ## 硬性红线（违反即停）
 
 1. **自测先行**：没有 headless selftest、没有明确 PASS/FAIL 的 feature，不算完成（`DEVELOPMENT_RULES.md` §1）
