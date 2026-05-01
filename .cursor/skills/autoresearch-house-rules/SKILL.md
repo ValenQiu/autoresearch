@@ -41,7 +41,7 @@ GitHub 入口（从 UHC 镜像加载、相对路径不通时使用）：<https:/
 | 通用编码纪律（每次 coding 任务） | `karpathy-coding-discipline` | `CLAUDE.md` 顶部 |
 | 写 / 改 `scripts/selftest.py` 或 集成测试 | `selftest-reality-alignment` | `DEVELOPMENT_RULES.md` §1 |
 | 新 ONNX 策略接入 UHC / deploy_* 对齐 / sim2sim 不稳定 | `uhc-policy-adaptation` | `AGENTS.md` §UHC；`DEVELOPMENT_RULES.md` §「适配新网络时的对齐清单」 |
-| whole-body tracker（BM/ASAP/OmniXtreme/ProtoMotions/...）接入 / loopback 摔倒 / "RoboJuDo 能做为什么我们不能" | `robojudo-policy-adaptation` | `research/robojudo_teacher_distilled.md` |
+| whole-body tracker（BM/ASAP/OmniXtreme/ProtoMotions/...）接入 / loopback 摔倒 / "RoboJuDo 能做为什么我们不能" | `robojudo-policy-adaptation` | `mission1_best_s2s_s2r/research/robojudo_teacher_distilled.md` |
 | base↔task 插值期腰部跳变 / 前倾 | `uhc-interpolation-debugging` | `mission1_best_s2s_s2r/README.md` |
 | sim2real LowCmd/LowState DDS、loopback mock、`lo→enp2s0` 切换 | `unitree-g1-sdk-dds-mock` | UHC `sim2real_redo` 分支开发约定 |
 | G1 真机启动 / 安全 / SDK DDS 集成 / 低层控制 | `unitree-g1-documentation-distilled` | UHC `sim2real_redo` 分支开发约定 |

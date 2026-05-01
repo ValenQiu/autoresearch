@@ -34,6 +34,6 @@
 - `../m3_sim2real.md` — 新的 M3 顶层方案（锚点 `02e7e79`，分支 `sim2real_redo`）
 - `../plan_uhc_unitree_sdk_mujoco_mock.md` — mock 桥方案设计（会在 sim2real_redo 中重新评估）
 - `../sop_sim2sim_to_sim2real.md` — 跨版本通用 SOP
-- `../research/robojudo_teacher_distilled.md` — teacher 调研（与 attempt 无强绑定）
-- `../research/m3_r5_main_vs_sim2real_debug_diff_review.md` — 两次 attempts 的差分审查报告
+- `../../research/robojudo_teacher_distilled.md` — teacher 调研（与 attempt 无强绑定）
+- `../../research/m3_r5_main_vs_sim2real_debug_diff_review.md` — 两次 attempts 的差分审查报告
 - UHC 归档 tag：`archive/main-m3-attempt1`、`archive/sim2real-debug-m3-attempt2`

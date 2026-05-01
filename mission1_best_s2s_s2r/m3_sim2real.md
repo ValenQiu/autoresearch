@@ -54,6 +54,26 @@
 | P5 loco / BFM 闭环 + Gate C | 🟡 loopback 全绿 / 真机延后 | 三 profile（loco / BFM+CR7 / BFM+BeyondMimic）物理底座已 PASS；真机切换 checklist 待写入 `sop_sim2sim_to_sim2real.md`；按项目约束真机动作延后 |
 | P6 Gate D 差分审查 | 🚧 待开始 | 对 `archive/main-m3-attempt1` 和 `attempt2` 做形式化差分 → 决定哪些设计可挽救 |
 
+## 0.25 当前优先级与范围说明（2026-05 更新）
+
+**真机相关一律挂起**：`selftest_real.py` 真机契约、`sop_sim2sim_to_sim2real.md` 中「真机切换 checklist」细化、首次真机站立/短走验收、DP2 全量 FK/SE 真机闭环等，**待项目明确启动真机阶段再执行**；不在当前迭代排期内完成。
+
+**本阶段主战场：仿真 + mock（loopback）链路完善**——目标是把 **MujocoBackend 与 `UnitreeBackend(mock)+run_g1_bridge` 与 PolicyRunner** 的语义与时序对齐到可签字、可回归，而不扩展真机网卡路径。
+
+**OmniXtreme 策略专项**：高动态 Omni 的 mock 深挖、与论文精神的工程逼近见 `mission1_best_s2s_s2r/research/omnixtreme_mock_paper_spirit_adaptation_plan.md` 与 `omnixtreme_arxiv2602_23843_paper_and_deploy_comparison.md`；**不阻塞** M3 上表 P0–P4 已绿项；与 Omni 强绑定的排障与验收 **顺延**，优先保障 **loco / BFM+CR7 / BFM+BeyondMimic** 等非 Omni-task 的 mock 矩阵稳定。
+
+**除 Omni 外、mock 阶段仍建议补齐的文档与门禁（真机可不执行）**：
+
+| 项 | 动作 | 说明 |
+|----|------|------|
+| **Gate A** | 推进 `m3_p2_alignment_matrix.md`：loopback 已实证行保持 FROZEN；真机列可标 `DEFERRED` 直至真机阶段，避免无限期 TBD | 签字可与「mock 段无 TBD」子集先行 |
+| **Gate A+** | 在矩阵或附录中冻结 quat / joint order / `RobotCmd` 字段语义，并加 RoboJuDo 对照备注 | 不连硬件也可写 |
+| **P5 文档** | `sop_sim2sim_to_sim2real.md` 仅补充 **mock 预检与 loopback 与 sim2sim 差异** 小节；真机 `lo→NIC` checklist 保留占位 | 与「真机挂起」一致 |
+| **P6** | 起草 `research/m3_p6_attempt_diff_audit.md`（attempt1/2 vs `sim2real_redo`） | 纯文档差分，不依赖真机 |
+| **BeyondMimic** | loopback 上 **WoSE ONNX** 重训仍为中期正解；当前 `override_robot_anchor_pos` 为兜底 | 属 mock 可验证的模型资产，非 Omni |
+
+**Research 归集**：mission 相关 research 已收至 `mission1_best_s2s_s2r/research/`（索引见同目录 `README.md`）；仓库根目录 `research/README.md` 仅作跳转说明。
+
 ## 0.3 架构决策（2026-04-23 审查后拍板）
 
 在进入 P2 之前，基于三方参考实现（ASAP / BeyondMimic / RoboJuDo）+ 官方 `unitreerobotics/unitree_mujoco` 调研，拍板两项**全局约束**：

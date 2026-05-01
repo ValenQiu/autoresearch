@@ -291,6 +291,8 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 
 **项目级重置（2026-04-23）**：原 M3 两次 attempt（`main` 与 `sim2real_debug`）均判定不可接受 → 全部 tag 归档（`archive/main-m3-attempt1@e1c664a`、`archive/sim2real-debug-m3-attempt2@0a661b6`），不参与当前开发。详见 `m3_sim2real.md` §0.2 与 `.archive/main_m3/README.md`。
 
+**当前执行口径（2026-05）**：真机项挂起；优先完善 **sim2sim + mock loopback** 与对齐矩阵文档门禁；OmniXtreme 专项排障顺延（不阻塞 loco/BFM/BM mock）。见 `m3_sim2real.md` **§0.25**。
+
 **重建原则**（强制）：
 - 仅保留 wandb 预下载工具（`tools/wandb_model_download/download_wandb_onnx.py`，UHC `sim2real_redo` 上 `b791b1c`）+ profile 自动写回（`7a4f7ce` / `d7b86cd`）
 - attempt1/attempt2 的实现细节不参与开发决策，仅在 P6 / Gate D 做差分审查参照
@@ -377,8 +379,13 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 **交付物**：
 - [x] `config/profiles/sim2real_g1_loopback.yaml`（loco，默认 G1 物理线）——smoke + 人工验证已绿
 - [x] `config/profiles/sim2real_g1_loopback_bfm_cr7.yaml`（BFM-Zero + ASAP CR7，OmniXtreme 物理线）——smoke + 人工验证（含 `fallAndGetUp1_subject4_2193` 等地面/起身动作）已绿
-- [x] `config/profiles/sim2real_g1_loopback_bfm_bm.yaml`（BFM-Zero + BeyondMimic，OmniXtreme 物理线）——profile + 物理底座已通，BeyondMimic 任务链路人工验证待做
+- [x] `config/profiles/sim2real_g1_loopback_bfm_bm.yaml`（BFM-Zero + BeyondMimic，OmniXtreme 物理线）——profile + 物理底座已通；BM obs 自适应（`observation_names` metadata + `override_robot_anchor_pos`）已落地，详见 [`research/robojudo_teacher_distilled.md`](research/robojudo_teacher_distilled.md) §2-3
 - [x] loopback 端到端稳定性：smoke 的 `q_in_bounds` + `tracking_bias` + `cycle_response_ratio` 组合已间接覆盖 `min_z / max_tilt / joint torque envelope`（与 ASAP 参考门槛工程化对齐）
+- [ ] **BeyondMimic loopback 人工验收 + WoSE 重训**（新增，2026-04-23）：
+  - 根因确认：当前用户上手的 ONNX 是 **With-SE 版本**（`obs: [1, 160]`，`observation_names` 含 `motion_anchor_pos_b` + `base_lin_vel`），训练时依赖 `state_estimator`；UnitreeBackend 没有 SE → obs 两段退化成 0 → OOD → 摔倒。
+  - 短期兜底（已落地）：`sim2real_g1_loopback_bfm_bm.yaml` 打开 `override_robot_anchor_pos: true`，让 `motion_anchor_pos_b == 0`，rotation 项仍走 `UnitreeBackend.get_body_frame("torso_link")` 的 IMU+waist FK。
+  - 中期正解（TODO）：去 MTC fork（`https://github.com/ValenQiu/motion_tracking_controller`）切 `G1FlatWoStateEstimationEnvCfg` 重训，导出 **WoSE ONNX**（`obs: [1, 154]`）；UHC 已支持 metadata 自动分流（见 `uhc/policies/beyondmimic.py::_build_obs`），无需代码改动。
+  - 长期正解（TODO，移到 P6 或 M3 闭合后的真机节点）：在 `UnitreeBackend` 实现 contact-aided state estimator（pelvis p/v 从 IMU + 腿 FK + 足部接触融合），补齐 `base_pos` / `base_lin_vel` 两路信号。
 - [ ] 真机切换 checklist（`lo → enp2s0` + `domain_id` + 启动顺序 + 急停）固化到 `sop_sim2sim_to_sim2real.md`（M3 内仅写文档，真机动作延后）
 - [ ] 真机最小切换：仅 loco 策略，仅 PASSIVE → BASE_ACTIVE → E_STOP，不引入新策略（按项目约束暂不执行真机）
 
@@ -398,7 +405,7 @@ WandB run summary 的 `Train/mean_episode_length` 是训练 episode 超时长（
 ---
 
 **当前文档交付物状态**：
-- [x] `m3_sim2real.md`（重置后顶层方案 + P0/P1 完成记录；§0.2 表格已同步 P3/P4 ✅、P5 🟡、P2/P6 🚧）
+- [x] `m3_sim2real.md`（重置后顶层方案 + P0/P1 完成记录；§0.2 表格已同步 P3/P4 ✅、P5 🟡、P2/P6 🚧；§0.25 真机挂起 / mock 优先 / Omni 顺延）
 - [x] `plan_uhc_unitree_sdk_mujoco_mock.md`（保留；P4 已落地为 `third_party/unitree_mujoco` submodule + UHC 包装脚本，设计细节见 `docs/sim2real_loopback_debug_playbook.md`）
 - [x] `sop_sim2sim_to_sim2real.md`（保留；跨版本通用 SOP；P5 收尾时补真机切换 checklist）
 - [x] `research/robojudo_teacher_distilled.md`（teacher 蒸馏；P2/P4 引用）
