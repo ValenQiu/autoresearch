@@ -4,22 +4,15 @@
 
 ## Milestones
 
-每个 Milestone 产出一个**独立可训练的 Task**，可单独启动训练做消融对比，互不依赖；全部验证通过后再合并为 `M_Full`。
+开发与实验阶段曾用多个独立 Fast task 做消融；**M_Cleanup 已执行**：对外只保留 `Tracking-Fast-G1-v0` + `G1FastPPORunnerCfg`，与 `Tracking-Flat-G1-v0` + `G1FlatPPORunnerCfg` 对称。历史消融 runner 类保留在 `whole_body_tracking` 的 `rsl_rl_fast_ppo_cfg_ablation.py`（**未**注册 gym），需要时可本地临时改 `g1/__init__.py` 或拷贝该类到实验分支。
 
-每个 Milestone 产出一个**独立可训练的 Task**，可单独启动训练做消融对比，互不依赖；全部验证通过后经 M_Cleanup 整理为单一干净 task，完全类比 `Tracking-Flat-G1-v0` 的简洁结构。
+| ID | Task ID | 名称 | 范围 | 状态 |
+|----|---------|------|------|------|
+| **Fast（生产）** | `Tracking-Fast-G1-v0` | `G1FastPPORunnerCfg`：课程噪声 + Push，`min_iterations` 哨兵关早停 | 默认训练入口 | **已完成**（含 M_Cleanup） |
+| M1–M_Full（归档） | *（原 `Tracking-Fast-*` 独立 id 已从注册表删除）* | `rsl_rl_fast_ppo_cfg_ablation.py` 内 `G1FastNoisePPORunnerCfg` 等 | 历史消融 / 复现 | 仅源码归档 |
+| M4 | `Tracking-Fast-Assist-G1-v0`（计划名） | 站立辅助力（200 N） | 早期收敛 | 待评估 |
 
-| ID | Task ID（训练期） | 名称 | 范围 | 状态 |
-|----|------------------|------|------|------|
-| M0 | `Tracking-Fast-G1-v0` | 基础设施（与 Flat 等价） | 配置基建 | **已完成**（基建可训；Flat 等价以 `selftest_fast.py` + 对照训练在计划中勾选验收） |
-| M1 | `Tracking-Fast-Noise-G1-v0` | 仅课程观测噪声 | 样本效率 | **进行中**（实现已合入；**`ScaledUniformNoiseCfg` 与 Isaac `noise.func(obs, cfg)` 约定待对齐**后重跑消融方有效） |
-| M2 | `Tracking-Fast-Push-G1-v0` | 仅课程 Push | 样本效率 | **进行中**（实现已合入；Walk/Dance 达标验收待补） |
-| M3 | `Tracking-Fast-EarlyStop-G1-v0` | 仅自适应早停 | 计算效率 | **进行中**（仅本 task 启用早停；判据/阈值可与实验结论再调） |
-| M_Full | `Tracking-Fast-Full-G1-v0` | 噪声 + Push 合并（**默认关闭早停**） | 全特性 | **进行中**（与 M1 同噪声修复依赖；早停不纳入 Full） |
-| M4 | `Tracking-Fast-Assist-G1-v0` | 站立辅助力（200 N） | 早期收敛 | 待评估 |
-| **M_Cleanup** | **`Tracking-Fast-G1-v0`（最终）** | **消融架构收敛 → 单一干净 task** | 代码整理 | **未开始** |
-
-> **进度说明**：`whole_body_tracking`（`fast_bm_training`）侧 Fast task、runner、`train_fast.py`、远程 fuyao 启动链路已在工程上跑通；Mission 2 **收尾**集中在：噪声课程接线修复、WandB 正式达标对照、**M_Cleanup** 单 task 收敛与 selftest 数字对齐。  
-> M_Cleanup 完成后：消融 task（Noise/Push/EarlyStop/Full）从注册表删除，feature flag 全部消除，`Tracking-Fast-G1-v0` 成为唯一对外 task，结构与 `Tracking-Flat-G1-v0` 完全对称。
+> **进度说明**：`train_fast.py --task=Tracking-Fast-G1-v0` 为唯一推荐入口；`scripts/rsl_rl/selftest_fast.py` 当前 **23** 条 `r.check`（需本机有 `torch` 的环境，如 Isaac 训练 env）。Mission 2 **收尾**仍含：噪声课程与 Isaac `noise.func` 接线对齐、WandB 达标对照（与 Cleanup 正交）。
 
 ## 核心规则（强制）
 
@@ -94,9 +87,9 @@ s_{\text{push}}(n)=s(n; s_{p0}, T_p)
 |\beta_n| < \tau
 \]
 
-**参数与 task 对应关系**（`G1FastBasePPORunnerCfg` 默认值）：\(W=1000,\ \tau=5\times 10^{-5}\)。  
-- **`Tracking-Fast-EarlyStop-G1-v0`（M3）**：`min_iterations=5000`，上述 plateau 判据**会生效**。  
-- **`Tracking-Fast-Full-G1-v0`（M_Full）**：`min_iterations=int(1e9)`（哨兵），早停**默认关闭**；Full 只保留噪声 + Push 课程。
+**参数**（生产 `G1FastPPORunnerCfg` 与归档基类一致）：\(W=1000,\ \tau=5\times 10^{-5}\)。  
+- **生产**：`min_iterations=int(1e9)`，早停**关闭**；噪声 + Push 课程由 `noise_scale_start`、`push_scale_start` 激活。  
+- **归档早停实验**：`G1FastEarlyStopPPORunnerCfg` 中 `min_iterations=5000`，plateau 判据会生效（需自行挂回注册或独立脚本加载）。
 
 ## 仓库分支
 
@@ -214,7 +207,7 @@ scripts/
 **设计**：在 `FastMotionOnPolicyRunner.log()` 中（继承自 `MotionOnPolicyRunner` 的训练循环）：
 - 维护长度为 `plateau_window`（默认 1000 iter）的滑动窗口，记录每 iter 的 `mean(rewbuffer)`。
 - 计算窗口内线性回归斜率 \(\beta\)；当 \(|\beta| < \text{plateau\_threshold}\)（默认 `5e-5`）且当前 iter \(\ge \text{min\_iterations}\) 时，保存 checkpoint 并抛出 `_EarlyStop` 结束训练。
-- **仅 `Tracking-Fast-EarlyStop-G1-v0`** 将 `min_iterations` 设为 `5000` 以启用早停；**`Tracking-Fast-Full-G1-v0` 默认 `min_iterations=int(1e9)`，不启用早停**（避免误判 plateau 导致未充分训练即退出）。
+- **生产 `G1FastPPORunnerCfg`**：`min_iterations=int(1e9)`，不启用早停。若需早停消融，使用归档 `G1FastEarlyStopPPORunnerCfg` 并自行接入训练入口。
 - 指标来源：WandB 等与 RSL-RL 一致的 `Train/mean_reward` 日志；实现侧从 `locs["rewbuffer"]` 取量（键名随 rsl_rl 版本可能为 `rew_buffer`，需与运行环境核对）。
 
 ## 6. 200 N 站立辅助力（M4，待评估）

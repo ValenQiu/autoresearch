@@ -9,26 +9,24 @@
 
 - **共享 `G1FastEnvCfg(G1FlatEnvCfg)`**：`ScaledUniformNoiseCfg` + `curriculum_push_by_setting_velocity`；默认与 Flat 等价。
 - **共享 `FastMotionOnPolicyRunner(MotionOnPolicyRunner)`**：只重写 `log()` / `learn()`；行为由 **哨兵超参** 驱动（如 `noise_scale_start=1.0` 表示噪声课程关闭，`min_iterations=int(1e9)` 表示早停关闭）。
-- **每个消融一个 task + runner cfg 子类**，仅覆盖需要激活的哨兵字段。
+- **M_Cleanup 后**：gym 只注册 **`Tracking-Fast-G1-v0` → `G1FastPPORunnerCfg`**；历史消融 runner 类在 **`rsl_rl_fast_ppo_cfg_ablation.py`**，不再注册独立 task id。
 
 **Tech Stack:** Isaac Lab v2.1.0 · RSL-RL · `whole_body_tracking`（`fast_bm_training`）· PyTorch · WandB
 
 ---
 
-## Task ID 一览
+## Task ID 一览（M_Cleanup 后）
 
 | Task ID | 功能 | runner cfg |
 |---------|------|------------|
-| `Tracking-Fast-G1-v0` | M0：与 Flat 等价（基线复现） | `G1FastBasePPORunnerCfg`（哨兵全关） |
-| `Tracking-Fast-Noise-G1-v0` | M1：仅课程观测噪声 | `G1FastNoisePPORunnerCfg` |
-| `Tracking-Fast-Push-G1-v0` | M2：仅课程 Push | `G1FastPushPPORunnerCfg` |
-| `Tracking-Fast-EarlyStop-G1-v0` | M3：仅自适应早停 | `G1FastEarlyStopPPORunnerCfg` |
-| `Tracking-Fast-Full-G1-v0` | M_Full：噪声 + Push（**默认关闭早停**） | `G1FastFullPPORunnerCfg` |
+| `Tracking-Fast-G1-v0` | **唯一对外**：课程噪声 + Push，早停哨兵关 | `G1FastPPORunnerCfg` |
+
+**归档（不注册 gym，源码见 `rsl_rl_fast_ppo_cfg_ablation.py`）**：`G1FastBasePPORunnerCfg`、`G1FastNoisePPORunnerCfg`、`G1FastPushPPORunnerCfg`、`G1FastEarlyStopPPORunnerCfg`、`G1FastFullPPORunnerCfg`。复现旧消融时可临时改 `g1/__init__.py` 或使用独立实验分支。
 
 启训示例：
 
 ```bash
-python scripts/rsl_rl/train_fast.py --task=Tracking-Fast-Noise-G1-v0 \
+python scripts/rsl_rl/train_fast.py --task=Tracking-Fast-G1-v0 \
     --registry_name=<your-org>/wandb-registry-motions/walk2_subject4 ...
 ```
 
@@ -99,7 +97,7 @@ $$
 |\beta_n| < \tau
 $$
 
-**Runner 默认超参**：$W=1000,\ \tau=5\times10^{-5}$。**仅 M3**（`Tracking-Fast-EarlyStop-G1-v0`）设 $n_{\min}=5000$ 使上式生效；**M_Full** 使用 `min_iterations` 哨兵，**默认不启用早停**。
+**Runner 默认超参**：$W=1000,\ \tau=5\times10^{-5}$。**生产** `G1FastPPORunnerCfg`：`n_{\min}=\texttt{int(1e9)}`，早停不启用。**归档 M3** `G1FastEarlyStopPPORunnerCfg`：$n_{\min}=5000$。
 
 ---
 
@@ -109,9 +107,10 @@ $$
 |------|------|------|
 | **新建** | `source/.../tasks/tracking/mdp/curriculum.py` | `ScaledUniformNoiseCfg`、`curriculum_push_by_setting_velocity`（单文件） |
 | **新建** | `source/.../tasks/tracking/config/g1/fast_env_cfg.py` | `G1FastEnvCfg` |
-| **新建** | `source/.../tasks/tracking/config/g1/agents/rsl_rl_fast_ppo_cfg.py` | `G1FastBasePPORunnerCfg` + 消融子类 + `G1FastFullPPORunnerCfg` |
+| **新建** | `source/.../tasks/tracking/config/g1/agents/rsl_rl_fast_ppo_cfg.py` | **`G1FastPPORunnerCfg`（生产）** |
+| **新建** | `source/.../tasks/tracking/config/g1/agents/rsl_rl_fast_ppo_cfg_ablation.py` | 归档消融 runner 类（不注册） |
 | **新建** | `source/.../utils/fast_on_policy_runner.py` | `FastMotionOnPolicyRunner` |
-| **修改** | `source/.../tasks/tracking/config/g1/__init__.py` | 注册 5 个 Fast task |
+| **修改** | `source/.../tasks/tracking/config/g1/__init__.py` | 注册 **1** 个 Fast task：`Tracking-Fast-G1-v0` |
 | **修改** | `source/.../tasks/tracking/mdp/__init__.py` | 导出 `curriculum` |
 | **新建** | `scripts/rsl_rl/train_fast.py` | patch `train` 模块内 `OnPolicyRunner` 后调 `main()` |
 | **新建** | `scripts/rsl_rl/selftest_fast.py` | 无仿真逻辑自测 |
@@ -123,33 +122,33 @@ $$
 
 - `train_fast.py` 必须 patch **`import train as _train_mod` 后的 `_train_mod.OnPolicyRunner`**，而非仅改 `my_on_policy_runner` 模块属性。
 - **已知问题（待修）：** Isaac Lab `ObservationManager` 调用 `term_cfg.noise.func(obs, term_cfg.noise)`（第二个参数为 **noise cfg**，不是 `env`）。若 `ScaledUniformNoiseCfg.__call__` 仍从「伪 env」读 `obs_noise_scale`，则**噪声课程在运行时可能不生效**；修复后需重跑 M1 / M_Full 消融。
-- `G1FastFullPPORunnerCfg`：**不覆盖** `min_iterations`，继承基类 `int(1e9)`，早停默认关闭。
+- `G1FastPPORunnerCfg`：`min_iterations=int(1e9)`，早停默认关闭。归档 `G1FastFullPPORunnerCfg` 行为与 Cleanup 前 M_Full 一致。
 
 ---
 
 ## M0：基础设施
 
-**目标：** 5 个 task 可注册、可导入；`Tracking-Fast-G1-v0` 与 Flat 行为对齐（哨兵全关）。
+**目标（Cleanup 前表述；现已由 M_Cleanup 替代）：** 多 task 消融可注册。Cleanup 后：**1** 个 Fast task；归档 cfg 可导入。
 
 **验收：**
 
-- `python scripts/rsl_rl/selftest_fast.py` 在当前环境通过（脚本内约 **25** 条 `r.check`，以控制台汇总为准）。
-- 任选 `--task=Tracking-Fast-G1-v0 --max_iterations=1` 冒烟启训。
+- `python scripts/rsl_rl/selftest_fast.py` 在含 `torch` 的环境通过（当前 **23** 条 `r.check`，以控制台 `SELFTEST:` 汇总为准）。
+- `--task=Tracking-Fast-G1-v0 --max_iterations=1` 冒烟启训。
 
 **实现任务（检查清单，非粘贴全代码）：**
 
 - [ ] `mdp/curriculum.py`：`ScaledUniformNoiseCfg`（建议与 `UniformNoiseCfg` + `curriculum_uniform_noise` 对齐 Hydra）、`curriculum_push_by_setting_velocity`
 - [ ] `fast_env_cfg.py`：替换 policy 噪声与 `push_robot` event
-- [ ] `rsl_rl_fast_ppo_cfg.py`：基类 + 4 消融 + Full（哨兵）
+- [ ] `rsl_rl_fast_ppo_cfg.py`：`G1FastPPORunnerCfg`；`rsl_rl_fast_ppo_cfg_ablation.py` 归档
 - [ ] `fast_on_policy_runner.py`：`_linear_schedule`、`_update_curriculum`、`_check_plateau`、`log` / `learn`
-- [ ] `g1/__init__.py`：`_FAST_TASKS` 注册
+- [ ] `g1/__init__.py`：仅注册 `Tracking-Fast-G1-v0`
 - [ ] `train_fast.py`、`selftest_fast.py`
 
 ---
 
-## M1 ~ M_Full：独立训练实验
+## M1 ~ M_Full：独立训练实验（历史）
 
-在 M0 通过后，主要通过 **换 `--task`** 做消融；无需改代码即可跑 M1/M2/M3/M_Full。
+Cleanup **前**曾通过 **换 `--task`** 做消融。Cleanup **后**：默认仅用 `Tracking-Fast-G1-v0`；若需严格单因子消融，从 `rsl_rl_fast_ppo_cfg_ablation.py` 取对应 cfg 并临时注册或改 entry point。
 
 **控制变量：** 同一 `registry_name`（同一 motion artifact），`num_envs`、`max_iterations`、种子策略一致，便于对比。
 
@@ -163,14 +162,13 @@ $$
 
 ---
 
-## M_Cleanup：收敛为单一对外 Task（未执行则仍为计划）
+## M_Cleanup：收敛为单一对外 Task（**已完成**）
 
-**目标：** 仅保留一个 Fast task（如仍名 `Tracking-Fast-G1-v0`），runner cfg 命名与 `G1FlatPPORunnerCfg` 对称（例如将 `G1FastFullPPORunnerCfg` **重命名**为 `G1FastPPORunnerCfg`）；归档或删除消融专用 cfg 类与多余注册。
+**已落地：** gym 仅 `Tracking-Fast-G1-v0` → `G1FastPPORunnerCfg`（`experiment_name=g1_fast`，噪声/Push 课程开启，早停哨兵关）。消融类迁至 `rsl_rl_fast_ppo_cfg_ablation.py`。
 
-**验收（草案）：**
+**验收：**
 
-- `selftest_fast.py` 用例与 PASS 数更新并文档化。
-- `grep` 无 `enable_noise` 等遗留布尔开关（当前架构本不应存在）。
+- `selftest_fast.py`：**23** 条 `r.check` 全通过（需 `torch`）。
 - `train_fast.py --task=Tracking-Fast-G1-v0` 为唯一推荐入口。
 
 ---
@@ -179,19 +177,19 @@ $$
 
 | # | 阶段 | 指标 | 标准 |
 |---|------|------|------|
-| 1 | M0 | `selftest_fast.py` | 以当前脚本输出 PASS 总数为准（重建时约 25 条 `r.check`） |
-| 2 | M1 | Walk 消融 vs 基线 `bjkq41o7` | `Tracking-Fast-Noise-G1-v0` 在 ≤ 21000 iter 达基线 plateau reward 的 90%（**噪声课程接线修复后**重跑验收） |
+| 1 | M0 / Cleanup | `selftest_fast.py` | 当前 **23** 条 `r.check` 全通过 |
+| 2 | M1 | Walk 消融 vs 基线 `bjkq41o7` | 噪声单因子：使用归档 `G1FastNoisePPORunnerCfg` 并自行接入；≤21000 iter 达基线 plateau reward 的 90%（**噪声课程接线修复后**） |
 | 3 | M1 | Dance 消融 vs 基线 `l7c649v5` | 同上 |
 | 4 | M2 | Walk / Dance Push 消融 | 同 iter / 90% 标准 |
-| 5 | M3 | 早停消融（**仅** `Tracking-Fast-EarlyStop-G1-v0`） | 记录触发 iter 与 reward；推荐触发或后续 checkpoint ≥ 基线 90%；若仅验证「可提前结束」须在报告中说明 |
-| 6 | M_Full | Walk / Dance | **不与 M3 绑定**；不要求早停。≤21000 iter（或商定上限）终局 ≥ 基线 90%；WandB 中 `Train/obs_noise_scale`、`Train/push_velocity_scale` 符合 schedule（**噪声修复后**） |
-| 7 | M_Cleanup | `selftest_fast.py` | Cleanup 完成后更新用例数与通过标准 |
-| 8 | M_Cleanup | 残留检查 | 无计划外的 feature flag / 多余 task |
+| 5 | M3 | 早停消融 | 使用归档 `G1FastEarlyStopPPORunnerCfg`；记录触发 iter 与 reward |
+| 6 | 生产 Fast | Walk / Dance | `Tracking-Fast-G1-v0`：≤21000 iter（或商定上限）终局 ≥ 基线 90%；WandB 中 scale 曲线符合 schedule（**噪声修复后**） |
+| 7 | M_Cleanup | `selftest_fast.py` | **23** 条 `r.check`（见上） |
+| 8 | M_Cleanup | 残留检查 | 无多余 Fast task id；无布尔 feature flag |
 | 9 | M_Cleanup | 启训 | `train_fast.py --task=Tracking-Fast-G1-v0` 正常 |
 | 10 | 全程 | Flat 完整性 | `Tracking-Flat-G1-v0` 及 Flat 配置未被改坏 |
 | 11 | 全程 | selftest 时长 | 全量 headless 自测在约定时间内完成（如 ≤30s，视机器调整） |
 
-**说明：** `G1FastFullPPORunnerCfg` 默认 **`min_iterations=int(1e9)`**，早停关闭；M3 与 M_Full 验收分列。
+**说明：** 生产 `G1FastPPORunnerCfg` 默认 **`min_iterations=int(1e9)`**；归档 `G1FastEarlyStopPPORunnerCfg` 用于早停实验。
 
 ---
 
@@ -219,3 +217,4 @@ Teacher–Student 蒸馏、简化碰撞预训练等见 [`research/research_teach
 | 日期 | 说明 |
 |------|------|
 | 2026-05-07 | 磁盘丢失后重建；对齐哨兵架构、Full 默认无早停、公式块、全局验收表与已知噪声接线问题 |
+| 2026-05-07 | M_Cleanup：单 task `Tracking-Fast-G1-v0` + `G1FastPPORunnerCfg`；`rsl_rl_fast_ppo_cfg_ablation.py`；`selftest_fast.py` 23 条 |
